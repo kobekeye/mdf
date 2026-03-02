@@ -4,7 +4,7 @@
   "description": "Convert Markdown to beautiful PDFs — free, open-source, and zero-config.",
   "main": "index.js",
   "bin": {
-    "mdf": "./index.js"
+    "mdf": "index.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
