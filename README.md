@@ -1,6 +1,7 @@
 # mdf
-<img width="740" height="1048" alt="swappy-20260302_132719" src="https://github.com/user-attachments/assets/1c897b86-6f4e-4f20-8b8c-ef7aed5637dc" />
-<img width="741" height="1050" alt="swappy-20260302_132733" src="https://github.com/user-attachments/assets/3bc47fc5-8318-4e97-8261-4de724fbd944" />
+<img width="370" height="527" alt="mdfintro1" src="https://github.com/user-attachments/assets/30436af4-2f05-4678-ad80-64daa47a5f7c" />
+<img width="372" height="526" alt="mdfintro2" src="https://github.com/user-attachments/assets/bed40213-f5b3-4781-baa0-4eba09a000f3" />
+
 
 Convert Markdown to beautiful PDFs — free, open-source, and zero-config.
 
