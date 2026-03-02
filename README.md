@@ -19,13 +19,13 @@ Convert Markdown to beautiful PDFs — free, open-source, and zero-config.
 ## Installation
 
 ```bash
-npm install -g mdf
+npm install -g @kobekeye/mdf
 ```
 
 Or run without installing:
 
 ```bash
-npx mdf input.md
+npx @kobekeye/mdf input.md
 ```
 
 ## Usage
