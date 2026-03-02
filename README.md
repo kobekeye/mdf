@@ -4,9 +4,8 @@
 
 
 Convert Markdown to beautiful PDFs — free, open-source, and zero-config.
-
+Welcome to mdf! Please note that this project is currently in the MVP (Minimum Viable Product) stage. Any feedback, suggestions, or contributions are highly appreciated!
 ## Features
-
 - **Syntax highlighting** — fenced code blocks with language detection (via highlight.js)
 - **Math formulas** — inline and block LaTeX via KaTeX (`$...$` and `$$...$$`)
 - **Table of contents** — insert `[TOC]` anywhere in your document
