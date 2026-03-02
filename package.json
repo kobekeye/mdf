@@ -1,0 +1,33 @@
+{
+  "name": "mdf",
+  "version": "1.0.0",
+  "description": "Convert Markdown to beautiful PDFs — free, open-source, and zero-config.",
+  "main": "index.js",
+  "bin": {
+    "mdf": "./index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "markdown",
+    "pdf",
+    "converter",
+    "cli",
+    "katex",
+    "syntax-highlighting"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "highlight.js": "^11.11.1",
+    "katex": "^0.16.33",
+    "markdown-it": "^14.1.1",
+    "markdown-it-anchor": "^9.2.0",
+    "markdown-it-container": "^4.0.0",
+    "markdown-it-task-lists": "^2.1.1",
+    "markdown-it-texmath": "^1.0.0",
+    "puppeteer": "^24.37.5"
+  }
+}
