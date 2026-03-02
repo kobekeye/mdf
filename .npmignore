@@ -1,0 +1,8 @@
+node_modules/
+useless/
+.vscode/
+*.pdf
+test.md
+test-image.png
+package-lock.json
+.gitignore
