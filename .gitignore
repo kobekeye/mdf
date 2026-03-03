@@ -4,3 +4,8 @@ node_modules/
 .mdpdf-temp-*.html
 test.md
 useless/
+
+# 個人草稿／暫存檔
+demo.md
+Markdown-mark.svg
+publicity.txt
