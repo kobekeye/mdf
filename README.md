@@ -17,22 +17,33 @@ Welcome to mdf! Please note that this project is currently in the MVP (Minimum V
 - **CJK support** — uses Inter + Noto Sans TC via Google Fonts (requires internet on first run)
 
 ## Installation
-
+### Windows
 ```bash
 npm install -g @kobekeye/mdf
 ```
-
-Or run without installing:
-
+### Linux / macOS
+It is highly recommended to use [nvm](https://github.com/nvm-sh/nvm) to manage permissions. Using sudo with global npm installs is not recommended.
+#### 1. Install nvm
 ```bash
-npx @kobekeye/mdf input.md
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
 ```
-
+#### 2. Install nodejs
+```bash
+nvm install --lts
+```
+#### 3. Install mdf
+```bash
+npm install -g @kobekeye/mdf
+```
 ## Usage
-
 ```bash
 mdf input.md              # outputs input.pdf
 mdf input.md output.pdf   # custom output name
+```
+Or, if you want to try without installation, 
+```bash
+npx @kobekeye/mdf input.md              # outputs input.pdf
+npx @kobekeye/mdf input.md output.pdf   # custom output name
 ```
 
 ## Syntax Guide
@@ -74,7 +85,7 @@ Operation completed.
 :::
 ```
 
-### Manual Page Break
+### Manual Page Break!
 
 ```markdown
 ==page==
