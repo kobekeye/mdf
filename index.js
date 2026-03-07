@@ -9,15 +9,15 @@ const args = process.argv.slice(2);
 
 if (args.length === 0) {
     console.log(`
-usage: node index.js <input.md> [output.pdf]
+usage: mdf <input.md> [output.pdf]
 
   input.md    required, the Markdown file to convert
   output.pdf  optional, the output PDF file name
               (if omitted, it will automatically use the same name, e.g. input.pdf)
 
 examples:
-  node index.js README.md
-  node index.js doc.md custom-name.pdf
+  mdf README.md
+  mdf doc.md custom-name.pdf
     `);
     process.exit(0);
 }
