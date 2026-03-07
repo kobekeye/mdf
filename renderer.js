@@ -7,67 +7,76 @@ const hljs = require('highlight.js');
 const anchor = require('markdown-it-anchor');
 const taskLists = require('markdown-it-task-lists');
 const container = require('markdown-it-container');
+// const md = new MarkdownIt({
+//     html: true,
+//     highlight: function (str, lang) {
+//         if (lang && hljs.getLanguage(lang)) {
+//             try {
+//                 return '<pre class="hljs"><code>' +
+//                     hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
+//                     '</code></pre>';
+//             } catch (_) { }
+//         }
+//         return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>';
+//     }
+// });
 const md = new MarkdownIt({
     html: true,
-    highlight: function (str, lang) {
+    highlight: (str, lang) => {
+        const wrap = (content) => `<pre class="hljs"><code>${content}</code></pre>`;
         if (lang && hljs.getLanguage(lang)) {
             try {
-                return '<pre class="hljs"><code>' +
-                    hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
-                    '</code></pre>';
+                return wrap(hljs.highlight(str, { language: lang, ignoreIllegals: true }).value);
             } catch (_) { }
         }
-        return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>';
+        return wrap(md.utils.escapeHtml(str));
     }
-});
-md.use(texmath, {
-    engine: katex,
-    delimiters: 'dollars',
-});
-md.use(anchor, {
-    permalink: false,
-    slugify: (s) => encodeURIComponent(String(s).trim().toLowerCase().replace(/\s+/g, '-')),
-});
-md.use(taskLists, { enabled: true });
-// --- Callout container blocks: :::info, :::warning, :::danger, :::success ---
+})
+    .use(texmath, {
+        engine: katex,
+        delimiters: 'dollars',
+        // maybe can add some katexoptions later on.
+    })
+    .use(anchor, {
+        permalink: false,
+        // e.g. hello world 你好 -> hello-world-%E4%BD%A0%E5%A5%BD(你好)
+        slugify: (s) => encodeURIComponent(String(s).trim().toLowerCase().replace(/\s+/g, '-')),
+    })
+    .use(taskLists, { enabled: true });
+// --- Container blocks: :::info, :::warning, :::danger, :::success, :::spoiler ---
 // Color aliases: :::blue = :::info, :::orange = :::warning, etc.
-const CALLOUT_TYPES = [
-    { names: ['info', 'blue'], cssClass: 'info' },
-    { names: ['warning', 'orange'], cssClass: 'warning' },
-    { names: ['danger', 'red'], cssClass: 'danger' },
-    { names: ['success', 'green'], cssClass: 'success' },
+const CONTAINERS = [
+    { names: ['info', 'blue'], type: 'callout', cssClass: 'info' },
+    { names: ['warning', 'orange'], type: 'callout', cssClass: 'warning' },
+    { names: ['danger', 'red'], type: 'callout', cssClass: 'danger' },
+    { names: ['success', 'green'], type: 'callout', cssClass: 'success' },
+    { names: ['spoiler'], type: 'spoiler' } // different type
 ];
-for (const { names, cssClass } of CALLOUT_TYPES) {
+
+for (const { names, type, cssClass } of CONTAINERS) {
     for (const name of names) {
         md.use(container, name, {
-            render(tokens, idx) {
+            render: function (tokens, idx) {
                 const token = tokens[idx];
                 if (token.nesting === 1) {
-                    // opening tag – extract optional title after :::type
                     const titleMatch = token.info.trim().match(new RegExp(`^${name}\\s+(.*)$`));
                     const title = titleMatch ? titleMatch[1].trim() : '';
-                    const titleHtml = title
-                        ? `<p class="callout-title">${md.utils.escapeHtml(title)}</p>\n`
-                        : '';
-                    return `<div class="callout callout-${cssClass}">\n${titleHtml}`;
+
+                    // decide the HTML structure based on type
+                    if (type === 'spoiler') {
+                        const summary = title || 'Spoiler';
+                        return `<details class="callout-spoiler">\n<summary>${md.utils.escapeHtml(summary)}</summary>\n`;
+                    } else { // 'callout'
+                        const titleHtml = title ? `<p class="callout-title">${md.utils.escapeHtml(title)}</p>\n` : '';
+                        return `<div class="callout callout-${cssClass}">\n${titleHtml}`;
+                    }
                 }
-                return '</div>\n';
+                // ending tag
+                return type === 'spoiler' ? '</details>\n' : '</div>\n';
             },
         });
     }
 }
-// --- Spoiler (collapsible) container: :::spoiler ---
-md.use(container, 'spoiler', {
-    render(tokens, idx) {
-        const token = tokens[idx];
-        if (token.nesting === 1) {
-            const titleMatch = token.info.trim().match(/^spoiler\s+(.*)$/);
-            const summary = titleMatch ? titleMatch[1].trim() : 'Spoiler';
-            return `<details class="callout-spoiler">\n<summary>${md.utils.escapeHtml(summary)}</summary>\n`;
-        }
-        return '</details>\n';
-    },
-});
 // Unique HTML comment used as TOC marker (survives markdown-it rendering)
 const TOC_MARKER = '<!--TOC_PLACEHOLDER-->';
 // Regex to match [TOC] on its own line in raw Markdown
