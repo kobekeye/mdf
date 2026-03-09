@@ -4,6 +4,17 @@ const path = require('path');
 const puppeteer = require('puppeteer');
 const { renderToHtml } = require('./renderer');
 
+let tempFiles = [];
+
+// gracefully handle Ctrl+C: clean up temp files before exit
+// must be registered before puppeteer.launch(), which installs its own SIGINT wrapper
+process.on('SIGINT', () => {
+    for (const tempFile of tempFiles) {
+        try { fs.unlinkSync(tempFile); } catch (_) { }
+    }
+    process.exit(0);
+});
+
 // parse command line arguments
 const args = process.argv.slice(2);
 
@@ -22,8 +33,10 @@ examples:
     process.exit(0);
 }
 
-const inputFile = args[0];
-const outputFile = args[1] || inputFile.replace(/\.md$/i, '.pdf');
+const watchMode = args.includes('--watch') || args.includes('-w');
+const filteredArgs = args.filter(a => a !== '--watch' && a !== '-w');
+const inputFile = filteredArgs[0];
+const outputFile = filteredArgs[1] || inputFile.replace(/\.md$/i, '.pdf');
 
 // check if input file exists
 if (!fs.existsSync(inputFile)) {
@@ -31,7 +44,7 @@ if (!fs.existsSync(inputFile)) {
     process.exit(1);
 }
 
-async function convertToPdf() {
+async function convertToPdf(browser) {
     console.log(`converting: ${inputFile} → ${outputFile}`);
 
     const fullHtml = renderToHtml(inputFile);
@@ -41,10 +54,9 @@ async function convertToPdf() {
     const tempHtmlPath = path.join(inputDir, `.mdf-temp-${Date.now()}.html`);
     fs.writeFileSync(tempHtmlPath, fullHtml, 'utf-8');
 
+    tempFiles.push(tempHtmlPath);
     try {
-        const browser = await puppeteer.launch();
         const page = await browser.newPage();
-
         // use file:// URL to load, let relative path of images parse correctly
         await page.goto(`file://${tempHtmlPath}`, { waitUntil: 'networkidle0' });
         // wait for all fonts (including Google Fonts) to load completely, avoid CJK characters use synthetic bold
@@ -64,7 +76,7 @@ async function convertToPdf() {
             </div>`,
         });
 
-        await browser.close();
+        await page.close();
         console.log(`\x1b[32mDone! Output to: ${path.resolve(outputFile)}\x1b[0m`);
     } finally {
         // clean up temp HTML file
@@ -72,7 +84,38 @@ async function convertToPdf() {
     }
 }
 
-convertToPdf().catch((err) => {
-    console.error(`\x1b[31mError: ${err.message}\x1b[0m`);
-    process.exit(1);
-});
+async function main() {
+    const browser = await puppeteer.launch();
+
+    try {
+        await convertToPdf(browser);
+
+        if (watchMode) {
+            console.log(`\x1b[36mWatching for changes: ${inputFile}...\x1b[0m`);
+
+            let debounceTimer;
+            fs.watch(inputFile, (eventType) => {
+                if (eventType === 'change') {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(async () => {
+                        console.log(`\x1b[33mFile changed, re-converting...\x1b[0m`);
+                        try {
+                            await convertToPdf(browser);
+                        } catch (err) {
+                            console.error(`\x1b[31mError: ${err.message}\x1b[0m`);
+                        }
+                    }, 300);
+                }
+            });
+
+        } else {
+            await browser.close();
+        }
+    } catch (err) {
+        await browser.close();
+        console.error(`\x1b[31mError: ${err.message}\x1b[0m`);
+        process.exit(1);
+    }
+}
+
+main();
