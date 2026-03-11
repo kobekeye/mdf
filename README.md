@@ -40,10 +40,17 @@ npm install -g @kobekeye/mdf
 mdf input.md              # outputs input.pdf
 mdf input.md output.pdf   # custom output name
 ```
+To watch the output pdf file, use 
+```bash
+mdf input.md -w             # outputs input.pdf and watches for changes
+mdf input.md output.pdf -w  # custom output name and watches for changes
+```
 Or, if you want to try without installation, 
 ```bash
-npx @kobekeye/mdf input.md              # outputs input.pdf
-npx @kobekeye/mdf input.md output.pdf   # custom output name
+npx @kobekeye/mdf input.md               # outputs input.pdf
+npx @kobekeye/mdf input.md output.pdf    # custom output name
+npx @kobekeye/mdf input.md -w            # outputs input.pdf and watches for changes
+npx @kobekeye/mdf input.md output.pdf -w # custom output name and watches for changes
 ```
 
 ## Syntax Guide
