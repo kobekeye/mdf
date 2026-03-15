@@ -1,6 +1,6 @@
 {
   "name": "@kobekeye/mdf",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Convert Markdown to beautiful PDFs — free, open-source, and zero-config.",
   "main": "index.js",
   "bin": {
