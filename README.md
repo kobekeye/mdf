@@ -53,7 +53,11 @@ npx @kobekeye/mdf input.md output.pdf    # custom output name
 npx @kobekeye/mdf input.md -w            # outputs input.pdf and watches for changes
 npx @kobekeye/mdf input.md output.pdf -w # custom output name and watches for changes
 ```
-
+## Update
+```bash
+npm update -g @kobekeye/mdf
+```
+If you only use `npx` to run mdf, you don't need to update.
 ## Syntax Guide
 
 ### Table of Contents
