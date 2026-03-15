@@ -18,6 +18,7 @@ Welcome to mdf! Please note that this project is currently in the MVP (Minimum V
 
 ## Installation
 ### Windows
+If one hasn't install nodejs, click [here](https://nodejs.org) to install. After installing nodejs, type
 ```bash
 npm install -g @kobekeye/mdf
 ```
