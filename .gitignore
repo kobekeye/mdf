@@ -3,6 +3,7 @@ node_modules/
 .vscode/
 .mdpdf-temp-*.html
 useless/
+vscode-mdf/
 *.md
 
 # 個人草稿／暫存檔

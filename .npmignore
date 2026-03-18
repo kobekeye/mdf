@@ -1,6 +1,7 @@
 node_modules/
 useless/
 .vscode/
+vscode-mdf/
 *.pdf
 *.md
 test-image.png
