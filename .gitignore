@@ -1,4 +1,5 @@
 node_modules/
+.claude/
 *.pdf
 .vscode/
 .mdpdf-temp-*.html

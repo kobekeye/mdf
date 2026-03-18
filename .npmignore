@@ -4,6 +4,7 @@ useless/
 vscode-mdf/
 *.pdf
 *.md
+.claude/
 test-image.png
 package-lock.json
 .gitignore
