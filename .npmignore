@@ -2,10 +2,9 @@ node_modules/
 useless/
 .vscode/
 *.pdf
-test.md
+*.md
 test-image.png
 package-lock.json
 .gitignore
-demo.md
 Markdown-mark.svg
 publicity.txt

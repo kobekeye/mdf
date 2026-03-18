@@ -2,10 +2,9 @@ node_modules/
 *.pdf
 .vscode/
 .mdpdf-temp-*.html
-test.md
 useless/
+*.md
 
 # 個人草稿／暫存檔
-demo.md
 Markdown-mark.svg
 publicity.txt

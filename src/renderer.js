@@ -191,7 +191,7 @@ function renderBodyHtml(markdownFilePath) {
  */
 function renderToHtml(markdownFilePath, options = {}) {
     let markdownContent = fs.readFileSync(markdownFilePath, 'utf-8');
-    markdownContent = markdownContent.replace(/^==page==$/gm, '\n<div class="page-break"></div>\n');
+    markdownContent = markdownContent.replace(/^==page==$/gm, '\n\n<div class="page-break"></div>\n\n');
     markdownContent = preprocessTOC(markdownContent);
     const { themeCSS, hljsCSS, texmathCSS } = loadCSS();
     let bodyHtml = md.render(markdownContent);
