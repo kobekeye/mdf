@@ -1,4 +1,6 @@
 # mdf
+📢 version 1.1.4: Fixed KaTeX CSS path which leads to broken LaTeX rendering.
+
 <img width="370" height="527" alt="mdfintro1" src="https://github.com/user-attachments/assets/30436af4-2f05-4678-ad80-64daa47a5f7c" />
 <img width="372" height="527" alt="mdfintro2" src="https://github.com/user-attachments/assets/79bab5be-2ea6-430c-8075-42870caa41bc" />
 
