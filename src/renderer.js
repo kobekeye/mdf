@@ -154,7 +154,7 @@ const themePath = path.join(root, 'themes', 'default.css');
 const hljsCssPath = path.join(root, 'node_modules', 'highlight.js', 'styles', 'github-dark.css');
 const texmathCssPath = path.join(root, 'node_modules', 'markdown-it-texmath', 'css', 'texmath.css');
 // KaTeX CSS is referenced as a local file:// URL so its bundled fonts resolve correctly
-const katexCssUrl = `file://${path.join(__dirname, 'node_modules', 'katex', 'dist', 'katex.min.css')}`;
+const katexCssUrl = `file://${path.join(root, 'node_modules', 'katex', 'dist', 'katex.min.css')}`;
 // CSS cache: read once, avoid I/O on every render
 let cachedThemeCSS = null;
 let cachedHljsCSS = null;
