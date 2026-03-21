@@ -1,0 +1,37 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "mdf Markdown Injection",
+  "scopeName": "mdf.injection.markdown",
+  "injectionSelector": "L:text.html.markdown",
+  "patterns": [
+    { "include": "#pagebreak" },
+    { "include": "#toc" },
+    { "include": "#callout" }
+  ],
+  "repository": {
+    "pagebreak": {
+      "match": "^==page==$",
+      "name": "keyword.control.pagebreak.mdf"
+    },
+    "toc": {
+      "match": "^\\[TOC\\]$",
+      "name": "keyword.control.toc.mdf"
+    },
+    "callout": {
+      "begin": "^(:::)\\s*(info|blue|warning|orange|danger|red|success|green|spoiler)\\b(.*)$",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.callout.mdf" },
+        "2": { "name": "entity.name.tag.callout.mdf" },
+        "3": { "name": "string.unquoted.callout-title.mdf" }
+      },
+      "end": "^(:::)\\s*$",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.callout.mdf" }
+      },
+      "name": "meta.callout.mdf",
+      "patterns": [
+        { "include": "text.html.markdown" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,31 @@
+/* Webview container — wraps the mdf content in a scrollable page-like view */
+html {
+  scroll-behavior: auto; /* instant scroll restoration, no animation */
+}
+
+body {
+  /* Override VS Code webview defaults */
+  background: #f0f2f5;
+  padding: 32px 24px;
+  min-height: 100vh;
+  /* font/color/max-width are set by default.css via #mdf-content */
+}
+
+#mdf-content {
+  background: #ffffff;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 48px 56px;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.10);
+  /* Override body styles from default.css since we wrap in a div */
+  font-family: 'Inter', 'Noto Sans TC', sans-serif;
+  font-size: 15px;
+  line-height: 1.75;
+  color: #1a1a2e;
+}
+
+/* Reset the body-level max-width/margin from default.css since we apply them on #mdf-content */
+#mdf-content > * {
+  max-width: none;
+}

@@ -1,0 +1,90 @@
+{
+  "name": "vscode-mdf",
+  "displayName": "mdf — Markdown to PDF",
+  "description": "Live preview, syntax highlighting and snippets for mdf Markdown",
+  "version": "0.1.0",
+  "publisher": "kobekeye",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other", "Formatters"],
+  "activationEvents": ["onLanguage:markdown"],
+  "main": "./out/extension.js",
+  "configurationDefaults": {
+    "[markdown]": {
+      "editor.quickSuggestions": {
+        "other": "inline",
+        "comments": "off",
+        "strings": "off"
+      },
+      "editor.snippetSuggestions": "top"
+    }
+  },
+  "contributes": {
+    "grammars": [
+      {
+        "scopeName": "mdf.injection.markdown",
+        "path": "./syntaxes/mdf-markdown.injection.tmLanguage.json",
+        "injectTo": ["text.html.markdown"]
+      }
+    ],
+    "snippets": [
+      {
+        "language": "markdown",
+        "path": "./snippets/mdf-snippets.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "mdf.openPreview",
+        "title": "MDF: Open Preview",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "mdf.exportPdf",
+        "title": "MDF: Export PDF",
+        "icon": "$(export)"
+      },
+      {
+        "command": "mdf.switchMode",
+        "title": "MDF: Switch HTML/Typst Mode"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "mdf.openPreview",
+          "when": "resourceLangId == markdown",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "mdf",
+      "properties": {
+        "mdf.mode": {
+          "type": "string",
+          "enum": ["html", "typst"],
+          "enumDescriptions": [
+            "HTML pipeline: Markdown → HTML → PDF (KaTeX math)",
+            "Typst pipeline: Markdown → .typ → PDF (Typst native math)"
+          ],
+          "default": "html",
+          "description": "mdf 模式：影響 math snippets、preview 行為和 PDF 輸出 pipeline"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "node build.js",
+    "compile": "node build.js",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.3.0"
+  }
+}

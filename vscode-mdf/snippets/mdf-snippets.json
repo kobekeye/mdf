@@ -1,0 +1,47 @@
+{
+  "Page Break": {
+    "prefix": ["pagebreak", "pb"],
+    "body": "==page==",
+    "description": "Insert manual page break (mdf)"
+  },
+  "Table of Contents": {
+    "prefix": "toc",
+    "body": "[TOC]",
+    "description": "Insert table of contents (mdf)"
+  },
+  "Info Callout": {
+    "prefix": "info",
+    "body": ":::info ${1:Title}\n${2:Content}\n:::",
+    "description": "Info callout block (mdf)"
+  },
+  "Warning Callout": {
+    "prefix": "warning",
+    "body": ":::warning ${1:Title}\n${2:Content}\n:::",
+    "description": "Warning callout block (mdf)"
+  },
+  "Danger Callout": {
+    "prefix": "danger",
+    "body": ":::danger ${1:Title}\n${2:Content}\n:::",
+    "description": "Danger callout block (mdf)"
+  },
+  "Success Callout": {
+    "prefix": "success",
+    "body": ":::success ${1:Title}\n${2:Content}\n:::",
+    "description": "Success callout block (mdf)"
+  },
+  "Spoiler Callout": {
+    "prefix": "spoiler",
+    "body": ":::spoiler ${1:Title}\n${2:Content}\n:::",
+    "description": "Spoiler callout block (mdf)"
+  },
+  "Generic Callout": {
+    "prefix": ["callout", ":::"],
+    "body": ":::${1|info,warning,danger,success,spoiler|} ${2:Title}\n${3:Content}\n:::",
+    "description": "Generic callout block with type selection (mdf)"
+  },
+  "Block Math": {
+    "prefix": ["mathblock", "$$"],
+    "body": "$$\n${1:expression}\n$$",
+    "description": "Block math expression (mdf)"
+  }
+}
