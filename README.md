@@ -59,7 +59,11 @@ npx @kobekeye/mdf input.md output.pdf -w # custom output name and watches for ch
 ```bash
 npm update -g @kobekeye/mdf
 ```
-If you only use `npx` to run mdf, you don't need to update.
+If you only use `npx` to run mdf, make sure to run the latest version by using:
+```bash
+npx @kobekeye/mdf@latest
+```
+Otherwise, `npx` might use a cached version, causing you to encounter bugs that have already been fixed.
 ## Syntax Guide
 
 ### Table of Contents
