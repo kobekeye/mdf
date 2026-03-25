@@ -164,9 +164,16 @@ r.th_close    = r.td_close = () => '],\n';
  * @returns {string} Typst markup (does NOT include the template preamble)
  */
 function renderToTypst(mdPath) {
-    _listStack = []; // reset state
+    return renderToTypstFromString(fs.readFileSync(mdPath, 'utf-8'));
+}
 
-    let content = fs.readFileSync(mdPath, 'utf-8');
+/**
+ * Convert a Markdown string to a Typst string (for in-memory use, e.g. VSCode extension).
+ * @param {string} content - Markdown source string
+ * @returns {string} Typst markup (does NOT include the template preamble)
+ */
+function renderToTypstFromString(content) {
+    _listStack = []; // reset state
 
     // Task lists: convert before parsing (non-interactive unicode checkboxes)
     content = content.replace(/^(\s*)-\s+\[ \]/gm,  '$1- ☐');
@@ -180,4 +187,4 @@ function renderToTypst(mdPath) {
     return md.render(content);
 }
 
-module.exports = { renderToTypst };
+module.exports = { renderToTypst, renderToTypstFromString };

@@ -168,17 +168,25 @@ function loadCSS() {
     return { themeCSS: cachedThemeCSS, hljsCSS: cachedHljsCSS, texmathCSS: cachedTexmathCSS };
 }
 /**
- * render only Markdown body HTML (without <head>, CSS, etc.) for SSE real-time update, avoid full page reload
- * @param {string} markdownFilePath - Markdown file path
+ * render only Markdown body HTML from a raw string (for webview live preview)
+ * @param {string} content - raw Markdown string
  * @returns {string} rendered HTML body content
  */
-function renderBodyHtml(markdownFilePath) {
-    let content = fs.readFileSync(markdownFilePath, 'utf-8');
+function renderBodyHtmlFromString(content) {
     content = content.replace(/^==page==$/gm, '\n<div class="page-break"></div>\n');
     content = preprocessTOC(content);
     let html = md.render(content);
     html = processTOC(html);
     return html;
+}
+/**
+ * render only Markdown body HTML (without <head>, CSS, etc.) for SSE real-time update, avoid full page reload
+ * @param {string} markdownFilePath - Markdown file path
+ * @returns {string} rendered HTML body content
+ */
+function renderBodyHtml(markdownFilePath) {
+    const content = fs.readFileSync(markdownFilePath, 'utf-8');
+    return renderBodyHtmlFromString(content);
 }
 /**
  * render Markdown file to complete HTML string (including CSS)
@@ -219,4 +227,4 @@ function renderToHtml(markdownFilePath, options = {}) {
 </body>
 </html>`;
 }
-module.exports = { renderToHtml, renderBodyHtml };
+module.exports = { renderToHtml, renderBodyHtml, renderBodyHtmlFromString };

@@ -81,7 +81,8 @@ async function postUpdate(
     }
   } catch (err) {
     if (mode === 'typst') {
-      panel.webview.postMessage({ type: 'update', error: String(err) });
+      // Keep showing the last successful render — don't push the error to the preview
+      console.warn('[mdf] Typst compilation failed, keeping previous preview:', String(err));
     } else {
       panel.webview.postMessage({
         type: 'update',

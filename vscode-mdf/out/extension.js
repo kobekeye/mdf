@@ -72708,7 +72708,7 @@ var require_typst_renderer = __commonJS({
     r.text = (tokens, idx) => {
       const c = tokens[idx].content;
       if (c === PAGEBREAK_MARKER) return "#pagebreak()";
-      if (c === TOC_MARKER) return '#outline(title: "Contents")';
+      if (c === TOC_MARKER) return "#outline()";
       return c;
     };
     function countFirstRowCells(tokens, startIdx) {
@@ -73232,6 +73232,17 @@ function escapeHtml(s) {
 function currentMode() {
   return vscode3.workspace.getConfiguration("mdf").get("mode", "html");
 }
+function rewriteImageSrcs(html, webview, docDir) {
+  return html.replace(
+    /(<img\s[^>]*?\bsrc\s*=\s*)(["'])(.*?)\2/gi,
+    (_match, prefix, quote, src) => {
+      if (/^https?:\/\/|^data:/i.test(src)) return _match;
+      const absPath = path3.isAbsolute(src) ? src : path3.resolve(docDir, src);
+      const uri = webview.asWebviewUri(vscode3.Uri.file(absPath));
+      return `${prefix}${quote}${uri}${quote}`;
+    }
+  );
+}
 async function setWebviewContent(panel, context, document2, mode) {
   const content = document2.getText();
   const workspace3 = path3.dirname(document2.uri.fsPath);
@@ -73240,7 +73251,7 @@ async function setWebviewContent(panel, context, document2, mode) {
       const svgContent = await compileToSvg(context, content, workspace3);
       panel.webview.html = buildTypstWebviewHtml(panel, context, svgContent);
     } else {
-      const bodyHtml = renderBodyHtml(content);
+      const bodyHtml = rewriteImageSrcs(renderBodyHtml(content), panel.webview, workspace3);
       panel.webview.html = buildWebviewHtml(panel, context, bodyHtml);
     }
   } catch (err) {
@@ -73255,12 +73266,12 @@ async function postUpdate(panel, context, document2, mode) {
       const svgContent = await compileToSvg(context, content, workspace3);
       panel.webview.postMessage({ type: "update", svg: svgContent });
     } else {
-      const bodyHtml = renderBodyHtml(content);
+      const bodyHtml = rewriteImageSrcs(renderBodyHtml(content), panel.webview, workspace3);
       panel.webview.postMessage({ type: "update", html: bodyHtml });
     }
   } catch (err) {
     if (mode === "typst") {
-      panel.webview.postMessage({ type: "update", error: String(err) });
+      console.warn("[mdf] Typst compilation failed, keeping previous preview:", String(err));
     } else {
       panel.webview.postMessage({
         type: "update",
@@ -73285,7 +73296,9 @@ function openOrRevealPreview(context, document2) {
       enableScripts: true,
       localResourceRoots: [
         vscode3.Uri.file(path3.join(context.extensionPath, "out", "assets")),
-        vscode3.Uri.file(path3.join(context.extensionPath, "media"))
+        vscode3.Uri.file(path3.join(context.extensionPath, "media")),
+        vscode3.Uri.file(path3.dirname(document2.uri.fsPath)),
+        ...vscode3.workspace.workspaceFolders?.map((f) => f.uri) ?? []
       ],
       retainContextWhenHidden: true
     }
@@ -73420,11 +73433,11 @@ function activate(context) {
               const pdfBuffer = await compileToPdf(context, doc.getText(), workspace3);
               fs2.writeFileSync(outputUri.fsPath, pdfBuffer);
             } else {
-              await new Promise((resolve, reject) => {
+              await new Promise((resolve2, reject) => {
                 const { execFile } = require("child_process");
                 execFile("mdf", [doc.uri.fsPath, outputUri.fsPath], (err) => {
                   if (err) reject(new Error("mdf CLI not found. Install it: npm install -g @kobekeye/mdf"));
-                  else resolve();
+                  else resolve2();
                 });
               });
             }

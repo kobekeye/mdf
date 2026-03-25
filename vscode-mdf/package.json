@@ -79,7 +79,7 @@
   "scripts": {
     "vscode:prepublish": "node build.js",
     "compile": "node build.js",
-    "watch": "tsc -watch -p ./"
+    "watch": "node build.js --watch"
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",

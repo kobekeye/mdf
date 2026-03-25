@@ -10,3 +10,4 @@ package-lock.json
 .gitignore
 Markdown-mark.svg
 publicity.txt
+vscode-mdf/

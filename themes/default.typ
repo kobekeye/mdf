@@ -10,7 +10,7 @@
 )
 
 // ── Typography ────────────────────────────────────────────────────────────────
-#set text(font: ("Inter", "Noto Sans TC"), size: 11pt, lang: "zh")
+#set text(font: ("Inter", "Noto Sans TC"), size: 11pt, lang: "en")
 #set par(justify: true, leading: 0.8em)
 
 // ── Headings ──────────────────────────────────────────────────────────────────

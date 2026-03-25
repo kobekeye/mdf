@@ -6,6 +6,11 @@ node_modules/
 useless/
 vscode-mdf/
 *.md
+!test/**/*.md
+
+# build artifacts
+out/
+*.vsix
 
 # 個人草稿／暫存檔
 Markdown-mark.svg

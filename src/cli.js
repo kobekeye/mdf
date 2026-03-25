@@ -5,6 +5,7 @@ const { execSync } = require('child_process');
 const chokidar = require('chokidar');
 const puppeteer = require('puppeteer-core');
 const { renderToHtml } = require('./renderer');
+const { renderToTypst } = require('./typst-renderer');
 
 const BROWSERS = [
     // Google Chrome
@@ -105,21 +106,26 @@ const args = process.argv.slice(2);
 
 if (args.length === 0) {
     console.log(`
-usage: mdf <input.md> [output.pdf]
+usage: mdf <input.md> [output.pdf] [-w|--watch] [--typ]
 
   input.md    required, the Markdown file to convert
   output.pdf  optional, the output PDF file name
               (if omitted, it will automatically use the same name, e.g. input.pdf)
+  --typ       use Typst pipeline instead of Puppeteer (faster)
+  -w, --watch watch for changes and re-convert automatically
 
 examples:
   mdf README.md
   mdf doc.md custom-name.pdf
+  mdf doc.md --typ
+  mdf doc.md -w --typ
     `);
     process.exit(0);
 }
 
 const watchMode = args.includes('--watch') || args.includes('-w');
-const filteredArgs = args.filter(a => a !== '--watch' && a !== '-w');
+const typstMode = args.includes('--typ');
+const filteredArgs = args.filter(a => a !== '--watch' && a !== '-w' && a !== '--typ');
 const inputFile = filteredArgs[0];
 const outputFile = filteredArgs[1] || inputFile.replace(/\.md$/i, '.pdf');
 
@@ -127,6 +133,24 @@ const outputFile = filteredArgs[1] || inputFile.replace(/\.md$/i, '.pdf');
 if (!fs.existsSync(inputFile)) {
     console.error(`\x1b[31mError: file not found: ${inputFile}\x1b[0m`);
     process.exit(1);
+}
+
+const typTemplatePath = path.join(__dirname, '..', 'themes', 'default.typ');
+
+function convertToTypstPdf() {
+    console.log(`converting: ${inputFile} → ${outputFile}`);
+
+    const { NodeCompiler } = require('@myriaddreamin/typst-ts-node-compiler');
+
+    const template = fs.readFileSync(typTemplatePath, 'utf-8');
+    const body = renderToTypst(inputFile);
+    const fullTypst = template + '\n' + body;
+
+    const inputDir = path.dirname(path.resolve(inputFile));
+    const $typst = NodeCompiler.create({ workspace: inputDir });
+    const pdfBuffer = $typst.pdf({ mainFileContent: fullTypst });
+    fs.writeFileSync(path.resolve(outputFile), pdfBuffer);
+    console.log(`\x1b[32mDone! Output to: ${path.resolve(outputFile)}\x1b[0m`);
 }
 
 async function convertToPdf(browser) {
@@ -170,6 +194,32 @@ async function convertToPdf(browser) {
 }
 
 async function main() {
+    if (typstMode) {
+        try {
+            convertToTypstPdf();
+        } catch (err) {
+            console.error(`\x1b[31mError: ${err.message}\x1b[0m`);
+            process.exit(1);
+        }
+
+        if (watchMode) {
+            console.log(`\x1b[36mWatching for changes: ${inputFile}...\x1b[0m`);
+            let debounceTimer;
+            chokidar.watch(inputFile, { ignoreInitial: true }).on('change', () => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    console.log(`\x1b[33mFile changed, re-converting...\x1b[0m`);
+                    try {
+                        convertToTypstPdf();
+                    } catch (err) {
+                        console.error(`\x1b[31mError: ${err.message}\x1b[0m`);
+                    }
+                }, 300);
+            });
+        }
+        return;
+    }
+
     const detected = findBrowser();
     if (!detected) {
         console.error('\x1b[31mError: no supported browser found.\x1b[0m');

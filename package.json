@@ -7,7 +7,7 @@
     "mdf": "src/cli.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test/run.js"
   },
   "keywords": [
     "markdown",
@@ -21,6 +21,7 @@
   "license": "MIT",
   "type": "commonjs",
   "dependencies": {
+    "@myriaddreamin/typst-ts-node-compiler": "^0.7.0-rc2",
     "chokidar": "^5.0.0",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.33",
