@@ -1,9 +1,93 @@
 #!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 const chokidar = require('chokidar');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 const { renderToHtml } = require('./renderer');
+
+const BROWSERS = [
+    // Google Chrome
+    { name: 'Google Chrome', paths: {
+        linux: ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable'],
+        darwin: ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'],
+        win32: [
+            path.join(process.env.PROGRAMFILES || '', 'Google/Chrome/Application/chrome.exe'),
+            path.join(process.env['PROGRAMFILES(X86)'] || '', 'Google/Chrome/Application/chrome.exe'),
+            path.join(process.env.LOCALAPPDATA || '', 'Google/Chrome/Application/chrome.exe'),
+        ],
+    }},
+    // Chromium
+    { name: 'Chromium', paths: {
+        linux: ['/usr/bin/chromium', '/usr/bin/chromium-browser'],
+        darwin: ['/Applications/Chromium.app/Contents/MacOS/Chromium'],
+        win32: [
+            path.join(process.env.LOCALAPPDATA || '', 'Chromium/Application/chrome.exe'),
+        ],
+    }},
+    // Microsoft Edge
+    { name: 'Microsoft Edge', paths: {
+        linux: ['/usr/bin/microsoft-edge', '/usr/bin/microsoft-edge-stable'],
+        darwin: ['/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'],
+        win32: [
+            path.join(process.env.PROGRAMFILES || '', 'Microsoft/Edge/Application/msedge.exe'),
+            path.join(process.env['PROGRAMFILES(X86)'] || '', 'Microsoft/Edge/Application/msedge.exe'),
+        ],
+    }},
+    // Brave
+    { name: 'Brave', paths: {
+        linux: ['/usr/bin/brave', '/usr/bin/brave-browser'],
+        darwin: ['/Applications/Brave Browser.app/Contents/MacOS/Brave Browser'],
+        win32: [
+            path.join(process.env.PROGRAMFILES || '', 'BraveSoftware/Brave-Browser/Application/brave.exe'),
+            path.join(process.env.LOCALAPPDATA || '', 'BraveSoftware/Brave-Browser/Application/brave.exe'),
+        ],
+    }},
+    // Opera
+    { name: 'Opera', paths: {
+        linux: ['/usr/bin/opera'],
+        darwin: ['/Applications/Opera.app/Contents/MacOS/Opera'],
+        win32: [
+            path.join(process.env.PROGRAMFILES || '', 'Opera/opera.exe'),
+            path.join(process.env.LOCALAPPDATA || '', 'Programs/Opera/opera.exe'),
+        ],
+    }},
+    // Vivaldi
+    { name: 'Vivaldi', paths: {
+        linux: ['/usr/bin/vivaldi', '/usr/bin/vivaldi-stable'],
+        darwin: ['/Applications/Vivaldi.app/Contents/MacOS/Vivaldi'],
+        win32: [
+            path.join(process.env.LOCALAPPDATA || '', 'Vivaldi/Application/vivaldi.exe'),
+        ],
+    }},
+];
+
+function findBrowser() {
+    const platform = process.platform;
+
+    for (const browser of BROWSERS) {
+        const candidates = browser.paths[platform] || [];
+        for (const p of candidates) {
+            if (fs.existsSync(p)) {
+                return { name: browser.name, path: p };
+            }
+        }
+    }
+
+    // fallback: try `which` on Linux/macOS
+    if (platform !== 'win32') {
+        const cmds = ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser',
+                       'microsoft-edge', 'brave-browser', 'opera', 'vivaldi'];
+        for (const cmd of cmds) {
+            try {
+                const result = execSync(`which ${cmd}`, { encoding: 'utf-8' }).trim();
+                if (result) return { name: cmd, path: result };
+            } catch (_) { }
+        }
+    }
+
+    return null;
+}
 
 let tempFiles = [];
 
@@ -86,7 +170,14 @@ async function convertToPdf(browser) {
 }
 
 async function main() {
-    const browser = await puppeteer.launch();
+    const detected = findBrowser();
+    if (!detected) {
+        console.error('\x1b[31mError: no supported browser found.\x1b[0m');
+        console.error('Please install one of: Google Chrome, Chromium, Microsoft Edge, Brave, Opera, or Vivaldi.');
+        process.exit(1);
+    }
+    console.log(`\x1b[90mUsing browser: ${detected.name}\x1b[0m`);
+    const browser = await puppeteer.launch({ executablePath: detected.path });
 
     try {
         await convertToPdf(browser);
