@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
+const chokidar = require('chokidar');
 const puppeteer = require('puppeteer');
 const { renderToHtml } = require('./renderer');
 
@@ -94,18 +95,16 @@ async function main() {
             console.log(`\x1b[36mWatching for changes: ${inputFile}...\x1b[0m`);
 
             let debounceTimer;
-            fs.watch(inputFile, (eventType) => {
-                if (eventType === 'change') {
-                    clearTimeout(debounceTimer);
-                    debounceTimer = setTimeout(async () => {
-                        console.log(`\x1b[33mFile changed, re-converting...\x1b[0m`);
-                        try {
-                            await convertToPdf(browser);
-                        } catch (err) {
-                            console.error(`\x1b[31mError: ${err.message}\x1b[0m`);
-                        }
-                    }, 300);
-                }
+            chokidar.watch(inputFile, { ignoreInitial: true }).on('change', () => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(async () => {
+                    console.log(`\x1b[33mFile changed, re-converting...\x1b[0m`);
+                    try {
+                        await convertToPdf(browser);
+                    } catch (err) {
+                        console.error(`\x1b[31mError: ${err.message}\x1b[0m`);
+                    }
+                }, 300);
             });
 
         } else {
