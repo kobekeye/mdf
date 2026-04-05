@@ -20,8 +20,10 @@
   "author": "kobekeye",
   "license": "MIT",
   "type": "commonjs",
+  "devDependencies": {
+    "@myriaddreamin/typst-ts-node-compiler": "^0.7.0-rc2"
+  },
   "dependencies": {
-    "@myriaddreamin/typst-ts-node-compiler": "^0.7.0-rc2",
     "chokidar": "^5.0.0",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.33",

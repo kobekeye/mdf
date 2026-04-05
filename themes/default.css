@@ -1,3 +1,4 @@
+/* @mdf-fonts: Inter:400,700; Noto Sans TC:400,700; JetBrains Mono:400,700 */
 /* global */
 *,
 *::before,
@@ -16,6 +17,7 @@ body {
     padding: 0;
     overflow-wrap: break-word;
     -webkit-font-smoothing: antialiased;
+    text-autospace: normal;
 }
 
 /* headings */
@@ -61,6 +63,14 @@ h3 {
 h4 {
     font-size: 1em;
     color: #444;
+}
+
+/* reduce gap between consecutive headings with no content in between */
+h1+h2, h1+h3, h1+h4,
+h2+h3, h2+h4,
+h3+h4,
+h2+h2, h3+h3, h4+h4 {
+    margin-top: 0.6em;
 }
 
 /* paragraphs and texts */
@@ -266,6 +276,15 @@ figure {
 .toc a:hover {
     color: #3b82f6;
     text-decoration: underline;
+}
+
+/* ===== Alignment containers ===== */
+.align-center {
+    text-align: center;
+}
+
+.align-right {
+    text-align: right;
 }
 
 /* ===== Callout container blocks ===== */

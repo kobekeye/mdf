@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { parseFontMeta, ensureFonts, generateFontFaceCSS } = require('./font-manager');
 const MarkdownIt = require('markdown-it');
 const texmath = require('markdown-it-texmath');
 const katex = require('katex');
@@ -22,6 +23,7 @@ const container = require('markdown-it-container');
 // });
 const md = new MarkdownIt({
     html: true,
+    breaks: true,
     highlight: (str, lang) => {
         const wrap = (content) => `<pre class="hljs"><code>${content}</code></pre>`;
         if (lang && hljs.getLanguage(lang)) {
@@ -43,6 +45,17 @@ const md = new MarkdownIt({
         slugify: (s) => encodeURIComponent(String(s).trim().toLowerCase().replace(/\s+/g, '-')),
     })
     .use(taskLists, { enabled: true });
+// --- Alignment containers: :::center, :::right ---
+const ALIGNMENTS = ['center', 'right'];
+for (const align of ALIGNMENTS) {
+    md.use(container, align, {
+        render(tokens, idx) {
+            return tokens[idx].nesting === 1
+                ? `<div class="align-${align}">\n`
+                : '</div>\n';
+        },
+    });
+}
 // --- Container blocks: :::info, :::warning, :::danger, :::success, :::spoiler ---
 // Color aliases: :::blue = :::info, :::orange = :::warning, etc.
 const CONTAINERS = [
@@ -150,22 +163,36 @@ function processTOC(html) {
 }
 // CSS file paths
 const root = path.join(__dirname, '..');
-const themePath = path.join(root, 'themes', 'default.css');
 const hljsCssPath = path.join(root, 'node_modules', 'highlight.js', 'styles', 'github-dark.css');
 const texmathCssPath = path.join(root, 'node_modules', 'markdown-it-texmath', 'css', 'texmath.css');
 // KaTeX CSS is referenced as a local file:// URL so its bundled fonts resolve correctly
 const katexCssUrl = `file://${path.join(root, 'node_modules', 'katex', 'dist', 'katex.min.css')}`;
-// CSS cache: read once, avoid I/O on every render
-let cachedThemeCSS = null;
+// CSS cache: keyed by theme name, avoid I/O on every render
+const themeCache = {};
 let cachedHljsCSS = null;
 let cachedTexmathCSS = null;
+let currentTheme = 'default';
+function setTheme(name) { currentTheme = name; }
 function loadCSS() {
-    if (!cachedThemeCSS) {
-        cachedThemeCSS = fs.readFileSync(themePath, 'utf-8');
+    if (!themeCache[currentTheme]) {
+        const themePath = path.join(root, 'themes', `${currentTheme}.css`);
+        if (!fs.existsSync(themePath)) {
+            console.error(`\x1b[31mError: theme not found: ${currentTheme}\x1b[0m`);
+            process.exit(1);
+        }
+        const themeContent = fs.readFileSync(themePath, 'utf-8');
+        themeCache[currentTheme] = { css: themeContent, fontSpecs: parseFontMeta(themeContent) };
+    }
+    if (!cachedHljsCSS) {
         cachedHljsCSS = fs.readFileSync(hljsCssPath, 'utf-8');
         cachedTexmathCSS = fs.readFileSync(texmathCssPath, 'utf-8');
     }
-    return { themeCSS: cachedThemeCSS, hljsCSS: cachedHljsCSS, texmathCSS: cachedTexmathCSS };
+    const { css: themeCSS, fontSpecs } = themeCache[currentTheme];
+    return { themeCSS, fontSpecs, hljsCSS: cachedHljsCSS, texmathCSS: cachedTexmathCSS };
+}
+async function prepareFonts() {
+    const { fontSpecs } = loadCSS();
+    await ensureFonts(fontSpecs, currentTheme);
 }
 /**
  * render only Markdown body HTML from a raw string (for webview live preview)
@@ -201,7 +228,8 @@ function renderToHtml(markdownFilePath, options = {}) {
     let markdownContent = fs.readFileSync(markdownFilePath, 'utf-8');
     markdownContent = markdownContent.replace(/^==page==$/gm, '\n\n<div class="page-break"></div>\n\n');
     markdownContent = preprocessTOC(markdownContent);
-    const { themeCSS, hljsCSS, texmathCSS } = loadCSS();
+    const { themeCSS, fontSpecs, hljsCSS, texmathCSS } = loadCSS();
+    const fontFaceCSS = generateFontFaceCSS(fontSpecs);
     let bodyHtml = md.render(markdownContent);
     bodyHtml = processTOC(bodyHtml);
     // if contentWrapperId is provided, wrap content in a div for SSE real-time update
@@ -215,10 +243,7 @@ function renderToHtml(markdownFilePath, options = {}) {
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="${katexCssUrl}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
-    <style>${texmathCSS} ${hljsCSS} ${themeCSS}</style>
+    <style>${fontFaceCSS} ${texmathCSS} ${hljsCSS} ${themeCSS}</style>
     ${extraHead}
 </head>
 <body>
@@ -227,4 +252,4 @@ function renderToHtml(markdownFilePath, options = {}) {
 </body>
 </html>`;
 }
-module.exports = { renderToHtml, renderBodyHtml, renderBodyHtmlFromString };
+module.exports = { renderToHtml, renderBodyHtml, renderBodyHtmlFromString, setTheme, prepareFonts };

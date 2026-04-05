@@ -4,8 +4,9 @@ const path = require('path');
 const { execSync } = require('child_process');
 const chokidar = require('chokidar');
 const puppeteer = require('puppeteer-core');
-const { renderToHtml } = require('./renderer');
+const { renderToHtml, setTheme, prepareFonts } = require('./renderer');
 const { renderToTypst } = require('./typst-renderer');
+const { parseFontMeta, ensureFonts, getFontCacheDir } = require('./font-manager');
 
 const BROWSERS = [
     // Google Chrome
@@ -106,26 +107,38 @@ const args = process.argv.slice(2);
 
 if (args.length === 0) {
     console.log(`
-usage: mdf <input.md> [output.pdf] [-w|--watch] [--typ]
+usage: mdf <input.md> [output.pdf] [-w|--watch] [--theme <name>]
 
-  input.md    required, the Markdown file to convert
-  output.pdf  optional, the output PDF file name
-              (if omitted, it will automatically use the same name, e.g. input.pdf)
-  --typ       use Typst pipeline instead of Puppeteer (faster)
-  -w, --watch watch for changes and re-convert automatically
+  input.md        required, the Markdown file to convert
+  output.pdf      optional, the output PDF file name
+                  (if omitted, it will automatically use the same name, e.g. input.pdf)
+  -w, --watch     watch for changes and re-convert automatically
+  --theme <name>  use a custom theme (default: default)
+                  available: default, claude
 
 examples:
   mdf README.md
   mdf doc.md custom-name.pdf
-  mdf doc.md --typ
-  mdf doc.md -w --typ
+  mdf doc.md --theme claude
     `);
     process.exit(0);
 }
 
 const watchMode = args.includes('--watch') || args.includes('-w');
 const typstMode = args.includes('--typ');
-const filteredArgs = args.filter(a => a !== '--watch' && a !== '-w' && a !== '--typ');
+
+if (typstMode) {
+    console.log('\x1b[33mTypst pipeline is coming soon! Stay tuned.\x1b[0m');
+    process.exit(0);
+}
+
+// parse --theme option
+const themeIdx = args.indexOf('--theme');
+if (themeIdx !== -1 && args[themeIdx + 1]) {
+    setTheme(args[themeIdx + 1]);
+}
+
+const filteredArgs = args.filter((a, i) => a !== '--watch' && a !== '-w' && a !== '--typ' && a !== '--theme' && (themeIdx === -1 || i !== themeIdx + 1));
 const inputFile = filteredArgs[0];
 const outputFile = filteredArgs[1] || inputFile.replace(/\.md$/i, '.pdf');
 
@@ -137,17 +150,23 @@ if (!fs.existsSync(inputFile)) {
 
 const typTemplatePath = path.join(__dirname, '..', 'themes', 'default.typ');
 
-function convertToTypstPdf() {
+async function convertToTypstPdf() {
     console.log(`converting: ${inputFile} → ${outputFile}`);
 
     const { NodeCompiler } = require('@myriaddreamin/typst-ts-node-compiler');
 
     const template = fs.readFileSync(typTemplatePath, 'utf-8');
+    const fontSpecs = parseFontMeta(template);
+    await ensureFonts(fontSpecs, 'default');
+
     const body = renderToTypst(inputFile);
     const fullTypst = template + '\n' + body;
 
     const inputDir = path.dirname(path.resolve(inputFile));
-    const $typst = NodeCompiler.create({ workspace: inputDir });
+    const $typst = NodeCompiler.create({
+        workspace: inputDir,
+        fontArgs: [{ fontPaths: [getFontCacheDir()] }],
+    });
     const pdfBuffer = $typst.pdf({ mainFileContent: fullTypst });
     fs.writeFileSync(path.resolve(outputFile), pdfBuffer);
     console.log(`\x1b[32mDone! Output to: ${path.resolve(outputFile)}\x1b[0m`);
@@ -156,6 +175,7 @@ function convertToTypstPdf() {
 async function convertToPdf(browser) {
     console.log(`converting: ${inputFile} → ${outputFile}`);
 
+    await prepareFonts();
     const fullHtml = renderToHtml(inputFile);
 
     // write HTML to temp file (in the same directory as Markdown), let Puppeteer parse relative path of images correctly
@@ -196,7 +216,7 @@ async function convertToPdf(browser) {
 async function main() {
     if (typstMode) {
         try {
-            convertToTypstPdf();
+            await convertToTypstPdf();
         } catch (err) {
             console.error(`\x1b[31mError: ${err.message}\x1b[0m`);
             process.exit(1);
@@ -207,10 +227,10 @@ async function main() {
             let debounceTimer;
             chokidar.watch(inputFile, { ignoreInitial: true }).on('change', () => {
                 clearTimeout(debounceTimer);
-                debounceTimer = setTimeout(() => {
+                debounceTimer = setTimeout(async () => {
                     console.log(`\x1b[33mFile changed, re-converting...\x1b[0m`);
                     try {
-                        convertToTypstPdf();
+                        await convertToTypstPdf();
                     } catch (err) {
                         console.error(`\x1b[31mError: ${err.message}\x1b[0m`);
                     }

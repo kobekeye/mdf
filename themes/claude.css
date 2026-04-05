@@ -1,0 +1,434 @@
+/* @mdf-fonts: Source Serif 4:400,700; Noto Serif TC:400,700; JetBrains Mono:400,700 */
+/* ===== claude theme — warm, refined, mature ===== */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Georgia', 'noto sans tc', serif;
+    font-size: 15px;
+    line-height: 1.8;
+    color: #333333;
+    background: #ffffff;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+    text-autospace: normal;
+}
+
+/* headings */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: 'Source Serif 4: 400', 'noto serif tc', 'Georgia', serif;
+    font-weight: 700;
+    line-height: 1.35;
+    margin-top: 2.2em;
+    margin-bottom: 0.6em;
+    color: #1a1a1a;
+    letter-spacing: -0.01em;
+}
+
+h1 {
+    font-size: 1.9em;
+    padding-bottom: 0.35em;
+    border-bottom: 1.5px solid #d4d0c8;
+    margin-top: 0;
+}
+
+body > :first-child {
+    margin-top: 0;
+}
+
+.page-break + * {
+    margin-top: 0;
+}
+
+h2 {
+    font-size: 1.35em;
+    padding-bottom: 0.2em;
+    border-bottom: 1px solid #d4d0c8;
+}
+
+h3 {
+    font-size: 1.1em;
+}
+
+h4 {
+    font-size: 1em;
+    color: #555555;
+}
+
+/* reduce gap between consecutive headings with no content in between */
+h1+h2, h1+h3, h1+h4,
+h2+h3, h2+h4,
+h3+h4,
+h2+h2, h3+h3, h4+h4 {
+    margin-top: 0.6em;
+}
+
+/* paragraphs and texts */
+p {
+    margin: 0 0 1em;
+}
+
+a {
+    color: #b35c2a;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(179, 92, 42, 0.25);
+}
+
+strong {
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+em {
+    font-style: italic;
+    color: inherit;
+}
+
+/* inline code */
+code {
+    font-family: 'jetbrains mono', 'menlo', monospace;
+    font-size: 0.84em;
+    background: #f5f3f0;
+    color: #4a3f30;
+    padding: 0.15em 0.4em;
+    border-radius: 3px;
+    border: 1px solid #e5e0d8;
+}
+
+/* code blocks — ashwingopalsamy/claude-code-theme dark base */
+pre {
+    font-family: 'jetbrains mono', 'menlo', monospace;
+    font-size: 0.82em;
+    line-height: 1.7;
+    background: #141413;
+    color: #EAE7DF;
+    padding: 22px 26px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 1.4em 0;
+    border: 1px solid #252320;
+}
+
+pre code {
+    background: none;
+    color: inherit;
+    padding: 0;
+    font-size: inherit;
+    border-radius: 0;
+    border: none;
+}
+
+/* highlight.js token overrides — blended from ashwingopalsamy/claude-code-theme
+   & AuroralFrost/claude-light-theme dark palettes */
+pre .hljs-comment,
+pre .hljs-quote                             { color: #918981; font-style: italic; }
+pre .hljs-keyword,
+pre .hljs-selector-tag                      { color: #C197FF; }
+pre .hljs-built_in,
+pre .hljs-name,
+pre .hljs-tag                               { color: #D9645B; }
+pre .hljs-operator,
+pre .hljs-punctuation                       { color: #C6BDB2; }
+pre .hljs-string,
+pre .hljs-doctag,
+pre .hljs-selector-attr,
+pre .hljs-selector-pseudo,
+pre .hljs-template-tag                      { color: #B5E6A0; }
+pre .hljs-regexp                            { color: #FBE7AA; }
+pre .hljs-number,
+pre .hljs-literal                           { color: #F4DC90; }
+pre .hljs-template-variable,
+pre .hljs-deletion                          { color: #FFB19D; }
+pre .hljs-title,
+pre .hljs-section,
+pre .hljs-title.function_                  { color: #FFC1A6; }
+pre .hljs-type,
+pre .hljs-class                             { color: #E2A48B; }
+pre .hljs-attr,
+pre .hljs-property                          { color: #F6DDCD; }
+pre .hljs-symbol,
+pre .hljs-bullet,
+pre .hljs-meta,
+pre .hljs-link                              { color: #9B87F5; }
+pre .hljs-subst,
+pre .hljs-variable,
+pre .hljs-params                            { color: #F0CDBA; }
+pre .hljs-addition                          { color: #B5E6A0; }
+pre .hljs-emphasis                          { font-style: italic; }
+pre .hljs-strong                            { font-weight: bold; }
+
+/* blockquotes */
+blockquote {
+    margin: 1.4em 0;
+    padding: 14px 22px;
+    border-left: 3px solid #c4baa8;
+    background: #faf8f5;
+    border-radius: 0 4px 4px 0;
+    color: #555045;
+}
+
+blockquote p {
+    margin: 0;
+}
+
+/* horizontal rules */
+hr {
+    border: none;
+    border-top: 1px solid #d4d0c8;
+    margin: 2.2em 0;
+}
+
+/* lists */
+ul,
+ol {
+    padding-left: 1.6em;
+    margin: 0.5em 0 1em;
+}
+
+li {
+    margin: 0.3em 0;
+}
+
+/* task lists */
+ul.contains-task-list {
+    list-style-type: none;
+    padding-left: 0.2em;
+}
+
+li.task-list-item {
+    list-style: none;
+}
+
+li.task-list-item input[type="checkbox"] {
+    margin-right: 6px;
+    cursor: pointer;
+    accent-color: #b35c2a;
+}
+
+/* tables */
+table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    margin: 1.4em 0;
+    font-size: 0.92em;
+}
+
+thead tr {
+    background: #f7f5f2;
+    border-bottom: 2px solid #d4d0c8;
+}
+
+th {
+    font-weight: 600;
+    text-align: left;
+    padding: 11px 16px;
+    color: #1a1a1a;
+    border: 1px solid #d4d0c8;
+}
+
+td {
+    padding: 10px 16px;
+    border: 1px solid #e0dcd5;
+    color: #444444;
+}
+
+tr:nth-child(even) td {
+    background: #faf9f7;
+}
+
+/* images */
+img {
+    max-width: 100%;
+    border-radius: 6px;
+    display: block;
+    margin: 1.2em auto;
+}
+
+/* automatic page breaks */
+h1,
+h2,
+h3,
+h4 {
+    break-after: avoid;
+}
+
+pre,
+blockquote,
+img,
+table,
+figure {
+    break-inside: avoid;
+}
+
+/* manual page breaks */
+.page-break {
+    break-after: page;
+}
+
+/* table of contents */
+.toc {
+    background: #faf8f5;
+    border: 1px solid #d4d0c8;
+    border-radius: 6px;
+    padding: 22px 30px;
+    margin: 1.5em 0 2em;
+}
+
+.toc-title {
+    font-weight: 700;
+    font-size: 1.1em;
+    color: #1a1a1a;
+    margin: 0 0 0.6em;
+    padding-bottom: 0.4em;
+    border-bottom: 1px solid #d4d0c8;
+}
+
+.toc ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.toc ul ul {
+    padding-left: 1.4em;
+}
+
+.toc li {
+    margin: 0.25em 0;
+}
+
+.toc a {
+    color: #6b6050;
+    border-bottom: none;
+    text-decoration: none;
+    font-size: 0.95em;
+}
+
+.toc a:hover {
+    color: #b35c2a;
+    text-decoration: underline;
+}
+
+/* ===== Alignment containers ===== */
+.align-center {
+    text-align: center;
+}
+
+.align-right {
+    text-align: right;
+}
+
+/* ===== Callout container blocks ===== */
+.callout {
+    margin: 1.4em 0;
+    padding: 16px 22px;
+    border-left: 3.5px solid;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.95em;
+    line-height: 1.7;
+    break-inside: avoid;
+}
+
+.callout p {
+    margin: 0 0 0.5em;
+}
+
+.callout p:last-child {
+    margin-bottom: 0;
+}
+
+.callout strong,
+.callout-spoiler strong {
+    color: inherit;
+}
+
+.callout-title {
+    font-weight: 700;
+    margin: 0 0 0.4em !important;
+    font-size: 1em;
+}
+
+/* info – muted steel blue */
+.callout-info {
+    border-left-color: #7b9bb8;
+    background: #f5f7fa;
+    color: #3b4f63;
+}
+
+.callout-info .callout-title {
+    color: #5a7d9b;
+}
+
+/* warning – warm amber */
+.callout-warning {
+    border-left-color: #d4a04a;
+    background: #fdf8f0;
+    color: #6b5020;
+}
+
+.callout-warning .callout-title {
+    color: #b8872e;
+}
+
+/* danger – muted red */
+.callout-danger {
+    border-left-color: #c46050;
+    background: #fcf4f2;
+    color: #6e302a;
+}
+
+.callout-danger .callout-title {
+    color: #b04a3a;
+}
+
+/* success – sage green */
+.callout-success {
+    border-left-color: #7ba87b;
+    background: #f5f9f5;
+    color: #2f4a2f;
+}
+
+.callout-success .callout-title {
+    color: #5a8a5a;
+}
+
+/* spoiler – collapsible */
+.callout-spoiler {
+    margin: 1.4em 0;
+    padding: 16px 22px;
+    border-left: 3.5px solid #b8ad96;
+    background: #faf8f5;
+    border-radius: 0 6px 6px 0;
+    break-inside: avoid;
+}
+
+.callout-spoiler summary {
+    font-weight: 700;
+    cursor: pointer;
+    color: #6b6050;
+    font-size: 0.95em;
+    user-select: none;
+}
+
+.callout-spoiler summary:hover {
+    color: #444444;
+}
+
+.callout-spoiler[open] summary {
+    margin-bottom: 0.6em;
+    padding-bottom: 0.4em;
+    border-bottom: 1px solid #d4d0c8;
+}

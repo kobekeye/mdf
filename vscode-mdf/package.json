@@ -48,7 +48,7 @@
       },
       {
         "command": "mdf.switchMode",
-        "title": "MDF: Switch HTML/Typst Mode"
+        "title": "MDF: Switch Mode (Coming Soon)"
       }
     ],
     "menus": {
@@ -65,10 +65,9 @@
       "properties": {
         "mdf.mode": {
           "type": "string",
-          "enum": ["html", "typst"],
+          "enum": ["html"],
           "enumDescriptions": [
-            "HTML pipeline: Markdown → HTML → PDF (KaTeX math)",
-            "Typst pipeline: Markdown → .typ → PDF (Typst native math)"
+            "HTML pipeline: Markdown → HTML → PDF (KaTeX math)"
           ],
           "default": "html",
           "description": "mdf 模式：影響 math snippets、preview 行為和 PDF 輸出 pipeline"

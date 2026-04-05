@@ -10,7 +10,7 @@ const PAGEBREAK_MARKER = 'MDFPBMARKER';
 const TOC_MARKER       = 'MDFTOCMARKER';
 
 // ── markdown-it instance (NO texmath — math is passthrough) ──────────────────
-const md = new MarkdownIt({ html: true })
+const md = new MarkdownIt({ html: true, breaks: true })
     .use(anchor, {
         permalink: false,
         slugify: s => encodeURIComponent(String(s).trim().toLowerCase().replace(/\s+/g, '-')),
@@ -39,6 +39,18 @@ for (const { names, typstType } of CALLOUT_NAMES) {
             },
         });
     }
+}
+
+// --- Alignment containers: :::center, :::right ---
+const ALIGNMENTS = ['center', 'right'];
+for (const align of ALIGNMENTS) {
+    md.use(container, align, {
+        render(tokens, idx) {
+            return tokens[idx].nesting === 1
+                ? `#align(${align})[\n`
+                : ']\n\n';
+        },
+    });
 }
 
 md.use(container, 'spoiler', {

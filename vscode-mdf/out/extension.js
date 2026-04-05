@@ -30,6 +30,160 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
+// ../src/font-manager.js
+var require_font_manager = __commonJS({
+  "../src/font-manager.js"(exports2, module2) {
+    "use strict";
+    var https = require("https");
+    var fs2 = require("fs");
+    var path4 = require("path");
+    var os = require("os");
+    var readline = require("readline");
+    function getFontCacheDir() {
+      return path4.join(os.homedir(), ".mdf", "fonts");
+    }
+    function parseFontMeta(content) {
+      const match = content.match(/(?:\/\*|\/\/)\s*@mdf-fonts:\s*([^*\n]+?)(?:\s*\*\/)?$/m);
+      if (!match) return [];
+      return match[1].trim().split(";").map((s) => s.trim()).filter(Boolean).map((spec) => {
+        const colonIdx = spec.lastIndexOf(":");
+        if (colonIdx === -1) return null;
+        const family = spec.slice(0, colonIdx).trim();
+        const weights = spec.slice(colonIdx + 1).split(",").map((w) => parseInt(w.trim())).filter((w) => !isNaN(w));
+        if (!family || weights.length === 0) return null;
+        return { family, weights };
+      }).filter(Boolean);
+    }
+    function downloadFile(url, destPath) {
+      return new Promise((resolve2, reject) => {
+        const file = fs2.createWriteStream(destPath);
+        https.get(url, { headers: { "User-Agent": "Mozilla/4.0" } }, (res) => {
+          if (res.statusCode !== 200) {
+            file.close(() => fs2.unlink(destPath, () => {
+            }));
+            return reject(new Error(`HTTP ${res.statusCode}`));
+          }
+          res.pipe(file);
+          file.on("finish", () => file.close(resolve2));
+          file.on("error", (err) => {
+            fs2.unlink(destPath, () => {
+            });
+            reject(err);
+          });
+        }).on("error", (err) => {
+          file.close(() => {
+          });
+          reject(err);
+        });
+      });
+    }
+    function fetchFontUrls(family, weights) {
+      const familyParam = `${family.replace(/ /g, "+")}:wght@${weights.join(";")}`;
+      const url = `https://fonts.googleapis.com/css2?family=${familyParam}&display=swap`;
+      return new Promise((resolve2, reject) => {
+        https.get(url, { headers: { "User-Agent": "Mozilla/4.0" } }, (res) => {
+          let data = "";
+          res.on("data", (chunk) => {
+            data += chunk;
+          });
+          res.on("end", () => {
+            const result = {};
+            const fontFaceRe = /@font-face\s*\{([^}]+)\}/gi;
+            let m;
+            while ((m = fontFaceRe.exec(data)) !== null) {
+              const block = m[1];
+              const wm = block.match(/font-weight:\s*(\d+)/);
+              const um = block.match(/url\((['"]?)([^'")\s]+\.ttf)\1\)/i);
+              if (wm && um) {
+                const w = parseInt(wm[1]);
+                if (!result[w]) result[w] = um[2];
+              }
+            }
+            resolve2(result);
+          });
+          res.on("error", reject);
+        }).on("error", reject);
+      });
+    }
+    async function ensureFonts(fontSpecs, themeName) {
+      if (!fontSpecs || fontSpecs.length === 0) return;
+      const cacheDir = getFontCacheDir();
+      fs2.mkdirSync(cacheDir, { recursive: true });
+      const missing = [];
+      for (const { family, weights } of fontSpecs) {
+        const key = family.replace(/ /g, "");
+        for (const weight of weights) {
+          const filename = `${key}-${weight}.ttf`;
+          if (!fs2.existsSync(path4.join(cacheDir, filename))) {
+            missing.push({ family, weight, key, filename });
+          }
+        }
+      }
+      if (missing.length === 0) return;
+      const label = themeName ? `'${themeName}'` : "current";
+      const fontNames = [...new Set(missing.map((m) => m.family))].join(", ");
+      const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+      const answer = await new Promise((resolve2) => {
+        rl.question(`\x1B[36mTo use ${label} theme, install fonts: ${fontNames}? [Y/n] \x1B[0m`, resolve2);
+      });
+      rl.close();
+      const a = answer.trim().toLowerCase();
+      if (a !== "" && a !== "y" && a !== "yes") {
+        console.log("Skipped font installation.");
+        return;
+      }
+      console.log(`\x1B[36mDownloading fonts...\x1B[0m`);
+      const byFamily = {};
+      for (const item of missing) {
+        (byFamily[item.family] = byFamily[item.family] || []).push(item);
+      }
+      for (const [family, items] of Object.entries(byFamily)) {
+        let urlMap;
+        try {
+          urlMap = await fetchFontUrls(family, items.map((i) => i.weight));
+        } catch (err) {
+          console.warn(`\x1B[33mWarning: could not fetch font info for '${family}': ${err.message}\x1B[0m`);
+          continue;
+        }
+        for (const { weight, filename } of items) {
+          const ttfUrl = urlMap[weight];
+          if (!ttfUrl) {
+            console.warn(`\x1B[33mWarning: no TTF URL for '${family}' weight ${weight}\x1B[0m`);
+            continue;
+          }
+          process.stdout.write(`  ${filename}... `);
+          try {
+            await downloadFile(ttfUrl, path4.join(cacheDir, filename));
+            process.stdout.write("\x1B[32mok\x1B[0m\n");
+          } catch (err) {
+            process.stdout.write("\x1B[31mfailed\x1B[0m\n");
+            console.warn(`\x1B[33mWarning: ${err.message}\x1B[0m`);
+          }
+        }
+      }
+    }
+    function generateFontFaceCSS(fontSpecs) {
+      if (!fontSpecs || fontSpecs.length === 0) return "";
+      const cacheDir = getFontCacheDir();
+      const blocks = [];
+      for (const { family, weights } of fontSpecs) {
+        const key = family.replace(/ /g, "");
+        for (const weight of weights) {
+          const filePath = path4.join(cacheDir, `${key}-${weight}.ttf`);
+          if (fs2.existsSync(filePath)) {
+            const fileUrl = "file://" + filePath.split(path4.sep).join("/");
+            blocks.push(
+              `@font-face { font-family: '${family}'; font-weight: ${weight}; font-style: normal; src: url('${fileUrl}') format('truetype'); }`
+            );
+          }
+        }
+      }
+      return blocks.join("\n");
+    }
+    module2.exports = { parseFontMeta, ensureFonts, generateFontFaceCSS, getFontCacheDir };
+  }
+});
+
 // ../node_modules/mdurl/build/index.cjs.js
 var require_index_cjs = __commonJS({
   "../node_modules/mdurl/build/index.cjs.js"(exports2) {
@@ -5947,27 +6101,27 @@ var require_katex = __commonJS({
           };
           const sqrtPath = function(size, extraVinculum, viewBoxHeight) {
             extraVinculum = 1e3 * extraVinculum;
-            let path6 = "";
+            let path5 = "";
             switch (size) {
               case "sqrtMain":
-                path6 = sqrtMain(extraVinculum, hLinePad);
+                path5 = sqrtMain(extraVinculum, hLinePad);
                 break;
               case "sqrtSize1":
-                path6 = sqrtSize1(extraVinculum, hLinePad);
+                path5 = sqrtSize1(extraVinculum, hLinePad);
                 break;
               case "sqrtSize2":
-                path6 = sqrtSize2(extraVinculum, hLinePad);
+                path5 = sqrtSize2(extraVinculum, hLinePad);
                 break;
               case "sqrtSize3":
-                path6 = sqrtSize3(extraVinculum, hLinePad);
+                path5 = sqrtSize3(extraVinculum, hLinePad);
                 break;
               case "sqrtSize4":
-                path6 = sqrtSize4(extraVinculum, hLinePad);
+                path5 = sqrtSize4(extraVinculum, hLinePad);
                 break;
               case "sqrtTall":
-                path6 = sqrtTall(extraVinculum, hLinePad, viewBoxHeight);
+                path5 = sqrtTall(extraVinculum, hLinePad, viewBoxHeight);
             }
-            return path6;
+            return path5;
           };
           const innerPath = function(name, height) {
             switch (name) {
@@ -5993,7 +6147,7 @@ var require_katex = __commonJS({
                 return "";
             }
           };
-          const path5 = {
+          const path4 = {
             // The doubleleftarrow geometry is from glyph U+21D0 in the font KaTeX Main
             doubleleftarrow: "M262 157\nl10-10c34-36 62.7-77 86-123 3.3-8 5-13.3 5-16 0-5.3-6.7-8-20-8-7.3\n 0-12.2.5-14.5 1.5-2.3 1-4.8 4.5-7.5 10.5-49.3 97.3-121.7 169.3-217 216-28\n 14-57.3 25-88 33-6.7 2-11 3.8-13 5.5-2 1.7-3 4.2-3 7.5s1 5.8 3 7.5\nc2 1.7 6.3 3.5 13 5.5 68 17.3 128.2 47.8 180.5 91.5 52.3 43.7 93.8 96.2 124.5\n 157.5 9.3 8 15.3 12.3 18 13h6c12-.7 18-4 18-10 0-2-1.7-7-5-15-23.3-46-52-87\n-86-123l-10-10h399738v-40H218c328 0 0 0 0 0l-10-8c-26.7-20-65.7-43-117-69 2.7\n-2 6-3.7 10-5 36.7-16 72.3-37.3 107-64l10-8h399782v-40z\nm8 0v40h399730v-40zm0 194v40h399730v-40z",
             // doublerightarrow is from glyph U+21D2 in font KaTeX Main
@@ -6474,7 +6628,7 @@ var require_katex = __commonJS({
               if (this.alternate) {
                 node.setAttribute("d", this.alternate);
               } else {
-                node.setAttribute("d", path5[this.pathName]);
+                node.setAttribute("d", path4[this.pathName]);
               }
               return node;
             }
@@ -6482,7 +6636,7 @@ var require_katex = __commonJS({
               if (this.alternate) {
                 return '<path d="' + utils_escape(this.alternate) + '"/>';
               } else {
-                return '<path d="' + utils_escape(path5[this.pathName]) + '"/>';
+                return '<path d="' + utils_escape(path4[this.pathName]) + '"/>';
               }
             }
           }
@@ -10054,8 +10208,8 @@ var require_katex = __commonJS({
           };
           const staticSvg = function(value, options) {
             const [pathName, width, height] = svgData[value];
-            const path6 = new PathNode(pathName);
-            const svgNode = new SvgNode([path6], {
+            const path5 = new PathNode(pathName);
+            const svgNode = new SvgNode([path5], {
               "width": makeEm(width),
               "height": makeEm(height),
               // Override CSS rule `.katex svg { width: 100% }`
@@ -11216,8 +11370,8 @@ var require_katex = __commonJS({
                     pathName = "tilde" + imgIndex;
                   }
                 }
-                const path6 = new PathNode(pathName);
-                const svgNode = new SvgNode([path6], {
+                const path5 = new PathNode(pathName);
+                const svgNode = new SvgNode([path5], {
                   "width": "100%",
                   "height": makeEm(height2),
                   "viewBox": "0 0 " + viewBoxWidth + " " + viewBoxHeight,
@@ -11250,8 +11404,8 @@ var require_katex = __commonJS({
                   throw new Error("Correct katexImagesData or update code here to support\n                    " + numSvgChildren + " children.");
                 }
                 for (let i = 0; i < numSvgChildren; i++) {
-                  const path6 = new PathNode(paths[i]);
-                  const svgNode = new SvgNode([path6], {
+                  const path5 = new PathNode(paths[i]);
+                  const svgNode = new SvgNode([path5], {
                     "width": "400em",
                     "height": makeEm(height2),
                     "viewBox": "0 0 " + viewBoxWidth + " " + viewBoxHeight,
@@ -12500,8 +12654,8 @@ var require_katex = __commonJS({
           };
           const makeInner = function(ch, height, options) {
             const width = fontMetricsData["Size4-Regular"][ch.charCodeAt(0)] ? fontMetricsData["Size4-Regular"][ch.charCodeAt(0)][4] : fontMetricsData["Size1-Regular"][ch.charCodeAt(0)][4];
-            const path6 = new PathNode("inner", innerPath(ch, Math.round(1e3 * height)));
-            const svgNode = new SvgNode([path6], {
+            const path5 = new PathNode("inner", innerPath(ch, Math.round(1e3 * height)));
+            const svgNode = new SvgNode([path5], {
               "width": makeEm(width),
               "height": makeEm(height),
               // Override CSS rule `.katex svg { width: 100% }`
@@ -12670,10 +12824,10 @@ var require_katex = __commonJS({
               const midHeight = realHeightTotal - topHeightTotal - bottomHeightTotal;
               const viewBoxHeight = Math.round(realHeightTotal * 1e3);
               const pathStr = tallDelim(svgLabel, Math.round(midHeight * 1e3));
-              const path6 = new PathNode(svgLabel, pathStr);
+              const path5 = new PathNode(svgLabel, pathStr);
               const width = (viewBoxWidth / 1e3).toFixed(3) + "em";
               const height = (viewBoxHeight / 1e3).toFixed(3) + "em";
-              const svg = new SvgNode([path6], {
+              const svg = new SvgNode([path5], {
                 "width": width,
                 "height": height,
                 "viewBox": "0 0 " + viewBoxWidth + " " + viewBoxHeight
@@ -12714,8 +12868,8 @@ var require_katex = __commonJS({
           const vbPad = 80;
           const emPad = 0.08;
           const sqrtSvg = function(sqrtName, height, viewBoxHeight, extraVinculum, options) {
-            const path6 = sqrtPath(sqrtName, extraVinculum, viewBoxHeight);
-            const pathNode = new PathNode(sqrtName, path6);
+            const path5 = sqrtPath(sqrtName, extraVinculum, viewBoxHeight);
+            const pathNode = new PathNode(sqrtName, path5);
             const svg = new SvgNode([pathNode], {
               // Note: 1000:1 ratio of viewBox to document em width.
               "width": "400em",
@@ -13221,8 +13375,8 @@ var require_katex = __commonJS({
               const angleHeight = inner2.height + inner2.depth + lineWeight + clearance;
               inner2.style.paddingLeft = makeEm(angleHeight / 2 + lineWeight);
               const viewBoxHeight = Math.floor(1e3 * angleHeight * scale);
-              const path6 = phasePath(viewBoxHeight);
-              const svgNode = new SvgNode([new PathNode("phase", path6)], {
+              const path5 = phasePath(viewBoxHeight);
+              const svgNode = new SvgNode([new PathNode("phase", path5)], {
                 "width": "400em",
                 "height": makeEm(viewBoxHeight / 1e3),
                 "viewBox": "0 0 400000 " + viewBoxHeight,
@@ -72429,8 +72583,9 @@ var require_index_cjs5 = __commonJS({
 var require_renderer = __commonJS({
   "../src/renderer.js"(exports2, module2) {
     "use strict";
-    var fs3 = require("fs");
-    var path5 = require("path");
+    var fs2 = require("fs");
+    var path4 = require("path");
+    var { parseFontMeta, ensureFonts, generateFontFaceCSS } = require_font_manager();
     var MarkdownIt = require_index_cjs4();
     var texmath = require_texmath();
     var katex = require_katex();
@@ -72440,6 +72595,7 @@ var require_renderer = __commonJS({
     var container = require_index_cjs5();
     var md = new MarkdownIt({
       html: true,
+      breaks: true,
       highlight: (str, lang) => {
         const wrap = (content) => `<pre class="hljs"><code>${content}</code></pre>`;
         if (lang && hljs.getLanguage(lang)) {
@@ -72459,6 +72615,15 @@ var require_renderer = __commonJS({
       // e.g. hello world 你好 -> hello-world-%E4%BD%A0%E5%A5%BD(你好)
       slugify: (s) => encodeURIComponent(String(s).trim().toLowerCase().replace(/\s+/g, "-"))
     }).use(taskLists, { enabled: true });
+    var ALIGNMENTS = ["center", "right"];
+    for (const align of ALIGNMENTS) {
+      md.use(container, align, {
+        render(tokens, idx) {
+          return tokens[idx].nesting === 1 ? `<div class="align-${align}">
+` : "</div>\n";
+        }
+      });
+    }
     var CONTAINERS = [
       { names: ["info", "blue"], type: "callout", cssClass: "info" },
       { names: ["warning", "orange"], type: "callout", cssClass: "warning" },
@@ -72543,21 +72708,37 @@ ${titleHtml}`;
       const toc = generateTOC(html);
       return html.replace(TOC_MARKER, toc);
     }
-    var root = path5.join(__dirname, "..");
-    var themePath = path5.join(root, "themes", "default.css");
-    var hljsCssPath = path5.join(root, "node_modules", "highlight.js", "styles", "github-dark.css");
-    var texmathCssPath = path5.join(root, "node_modules", "markdown-it-texmath", "css", "texmath.css");
-    var katexCssUrl = `file://${path5.join(root, "node_modules", "katex", "dist", "katex.min.css")}`;
-    var cachedThemeCSS = null;
+    var root = path4.join(__dirname, "..");
+    var hljsCssPath = path4.join(root, "node_modules", "highlight.js", "styles", "github-dark.css");
+    var texmathCssPath = path4.join(root, "node_modules", "markdown-it-texmath", "css", "texmath.css");
+    var katexCssUrl = `file://${path4.join(root, "node_modules", "katex", "dist", "katex.min.css")}`;
+    var themeCache = {};
     var cachedHljsCSS = null;
     var cachedTexmathCSS = null;
+    var currentTheme = "default";
+    function setTheme(name) {
+      currentTheme = name;
+    }
     function loadCSS() {
-      if (!cachedThemeCSS) {
-        cachedThemeCSS = fs3.readFileSync(themePath, "utf-8");
-        cachedHljsCSS = fs3.readFileSync(hljsCssPath, "utf-8");
-        cachedTexmathCSS = fs3.readFileSync(texmathCssPath, "utf-8");
+      if (!themeCache[currentTheme]) {
+        const themePath = path4.join(root, "themes", `${currentTheme}.css`);
+        if (!fs2.existsSync(themePath)) {
+          console.error(`\x1B[31mError: theme not found: ${currentTheme}\x1B[0m`);
+          process.exit(1);
+        }
+        const themeContent = fs2.readFileSync(themePath, "utf-8");
+        themeCache[currentTheme] = { css: themeContent, fontSpecs: parseFontMeta(themeContent) };
       }
-      return { themeCSS: cachedThemeCSS, hljsCSS: cachedHljsCSS, texmathCSS: cachedTexmathCSS };
+      if (!cachedHljsCSS) {
+        cachedHljsCSS = fs2.readFileSync(hljsCssPath, "utf-8");
+        cachedTexmathCSS = fs2.readFileSync(texmathCssPath, "utf-8");
+      }
+      const { css: themeCSS, fontSpecs } = themeCache[currentTheme];
+      return { themeCSS, fontSpecs, hljsCSS: cachedHljsCSS, texmathCSS: cachedTexmathCSS };
+    }
+    async function prepareFonts() {
+      const { fontSpecs } = loadCSS();
+      await ensureFonts(fontSpecs, currentTheme);
     }
     function renderBodyHtmlFromString2(content) {
       content = content.replace(/^==page==$/gm, '\n<div class="page-break"></div>\n');
@@ -72567,14 +72748,15 @@ ${titleHtml}`;
       return html;
     }
     function renderBodyHtml2(markdownFilePath) {
-      const content = fs3.readFileSync(markdownFilePath, "utf-8");
+      const content = fs2.readFileSync(markdownFilePath, "utf-8");
       return renderBodyHtmlFromString2(content);
     }
     function renderToHtml(markdownFilePath, options = {}) {
-      let markdownContent = fs3.readFileSync(markdownFilePath, "utf-8");
+      let markdownContent = fs2.readFileSync(markdownFilePath, "utf-8");
       markdownContent = markdownContent.replace(/^==page==$/gm, '\n\n<div class="page-break"></div>\n\n');
       markdownContent = preprocessTOC(markdownContent);
-      const { themeCSS, hljsCSS, texmathCSS } = loadCSS();
+      const { themeCSS, fontSpecs, hljsCSS, texmathCSS } = loadCSS();
+      const fontFaceCSS = generateFontFaceCSS(fontSpecs);
       let bodyHtml = md.render(markdownContent);
       bodyHtml = processTOC(bodyHtml);
       if (options.contentWrapperId) {
@@ -72587,10 +72769,7 @@ ${titleHtml}`;
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="${katexCssUrl}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
-    <style>${texmathCSS} ${hljsCSS} ${themeCSS}</style>
+    <style>${fontFaceCSS} ${texmathCSS} ${hljsCSS} ${themeCSS}</style>
     ${extraHead}
 </head>
 <body>
@@ -72599,7 +72778,7 @@ ${titleHtml}`;
 </body>
 </html>`;
     }
-    module2.exports = { renderToHtml, renderBodyHtml: renderBodyHtml2, renderBodyHtmlFromString: renderBodyHtmlFromString2 };
+    module2.exports = { renderToHtml, renderBodyHtml: renderBodyHtml2, renderBodyHtmlFromString: renderBodyHtmlFromString2, setTheme, prepareFonts };
   }
 });
 
@@ -72607,13 +72786,13 @@ ${titleHtml}`;
 var require_typst_renderer = __commonJS({
   "../src/typst-renderer.js"(exports2, module2) {
     "use strict";
-    var fs3 = require("fs");
+    var fs2 = require("fs");
     var MarkdownIt = require_index_cjs4();
     var anchor = require_markdownItAnchor();
     var container = require_index_cjs5();
     var PAGEBREAK_MARKER = "MDFPBMARKER";
     var TOC_MARKER = "MDFTOCMARKER";
-    var md = new MarkdownIt({ html: true }).use(anchor, {
+    var md = new MarkdownIt({ html: true, breaks: true }).use(anchor, {
       permalink: false,
       slugify: (s) => encodeURIComponent(String(s).trim().toLowerCase().replace(/\s+/g, "-"))
     });
@@ -72639,6 +72818,15 @@ var require_typst_renderer = __commonJS({
           }
         });
       }
+    }
+    var ALIGNMENTS = ["center", "right"];
+    for (const align of ALIGNMENTS) {
+      md.use(container, align, {
+        render(tokens, idx) {
+          return tokens[idx].nesting === 1 ? `#align(${align})[
+` : "]\n\n";
+        }
+      });
     }
     md.use(container, "spoiler", {
       render(tokens, idx) {
@@ -72730,7 +72918,7 @@ var require_typst_renderer = __commonJS({
     r.th_open = r.td_open = () => "  [";
     r.th_close = r.td_close = () => "],\n";
     function renderToTypst(mdPath) {
-      return renderToTypstFromString(fs3.readFileSync(mdPath, "utf-8"));
+      return renderToTypstFromString(fs2.readFileSync(mdPath, "utf-8"));
     }
     function renderToTypstFromString(content) {
       _listStack = [];
@@ -72887,151 +73075,6 @@ var require_latex_math = __commonJS({
   }
 });
 
-// data/typst-math.json
-var require_typst_math = __commonJS({
-  "data/typst-math.json"(exports2, module2) {
-    module2.exports = {
-      "frac(,)": { snippet: "frac($1, $2)", detail: "Fraction a/b" },
-      "sqrt()": { snippet: "sqrt($1)", detail: "\u221A Square root" },
-      "root(,)": { snippet: "root($1, $2)", detail: "\u207F\u221A nth root" },
-      sum: { detail: "\u2211 Sum" },
-      "sum_()^()": { snippet: "sum_($1)^($2)", detail: "\u2211 Sum with limits" },
-      product: { detail: "\u220F Product" },
-      "product_()^()": { snippet: "product_($1)^($2)", detail: "\u220F Product with limits" },
-      integral: { detail: "\u222B Integral" },
-      "integral_()^()": { snippet: "integral_($1)^($2)", detail: "\u222B Integral with limits" },
-      "integral.double": { detail: "\u222C Double integral" },
-      "integral.triple": { detail: "\u222D Triple integral" },
-      "integral.cont": { detail: "\u222E Contour integral" },
-      lim: { detail: "lim Limit" },
-      "lim_()": { snippet: "lim_($1 -> $2)", detail: "lim Limit with expression" },
-      partial: { detail: "\u2202 Partial derivative" },
-      nabla: { detail: "\u2207 Nabla / gradient" },
-      infinity: { detail: "\u221E Infinity" },
-      "dot.op": { detail: "\xB7 Centre dot (multiplication)" },
-      times: { detail: "\xD7 Times" },
-      div: { detail: "\xF7 Division" },
-      "plus.minus": { detail: "\xB1 Plus-minus" },
-      "minus.plus": { detail: "\u2213 Minus-plus" },
-      "lt.eq": { detail: "\u2264 Less than or equal" },
-      "gt.eq": { detail: "\u2265 Greater than or equal" },
-      "lt.double": { detail: "\u226A Much less than" },
-      "gt.double": { detail: "\u226B Much greater than" },
-      "eq.not": { detail: "\u2260 Not equal" },
-      approx: { detail: "\u2248 Approximately equal" },
-      "tilde.op": { detail: "\u223C Similar / tilde relation" },
-      "tilde.eq": { detail: "\u2243 Similar or equal" },
-      "eq.tilde": { detail: "\u2245 Congruent" },
-      equiv: { detail: "\u2261 Equivalent / identical" },
-      prop: { detail: "\u221D Proportional to" },
-      in: { detail: "\u2208 Element of" },
-      "in.not": { detail: "\u2209 Not element of" },
-      subset: { detail: "\u2282 Subset" },
-      "subset.eq": { detail: "\u2286 Subset or equal" },
-      supset: { detail: "\u2283 Superset" },
-      "supset.eq": { detail: "\u2287 Superset or equal" },
-      union: { detail: "\u222A Union" },
-      inter: { detail: "\u2229 Intersection" },
-      without: { detail: "\u2216 Set minus" },
-      nothing: { detail: "\u2205 Empty set" },
-      forall: { detail: "\u2200 For all" },
-      exists: { detail: "\u2203 There exists" },
-      "exists.not": { detail: "\u2204 Does not exist" },
-      not: { detail: "\xAC Logical not" },
-      and: { detail: "\u2227 Logical and" },
-      or: { detail: "\u2228 Logical or" },
-      xor: { detail: "\u2295 XOR / direct sum" },
-      "times.circle": { detail: "\u2297 Tensor product" },
-      "arrow.r": { detail: "\u2192 Right arrow" },
-      "arrow.l": { detail: "\u2190 Left arrow" },
-      "arrow.l.r": { detail: "\u2194 Left-right arrow" },
-      "arrow.r.double": { detail: "\u21D2 Implies" },
-      "arrow.l.double": { detail: "\u21D0 Implied by" },
-      "arrow.l.r.double": { detail: "\u21D4 If and only if" },
-      "->": { detail: "\u2192 Right arrow (shorthand)" },
-      "=>": { detail: "\u21D2 Implies (shorthand)" },
-      "<=>": { detail: "\u21D4 Iff (shorthand)" },
-      "|->": { detail: "\u21A6 Maps to (shorthand)" },
-      "arrow.t": { detail: "\u2191 Up arrow" },
-      "arrow.b": { detail: "\u2193 Down arrow" },
-      "dots.h": { detail: "\u2026 Horizontal dots (baseline)" },
-      "dots.c": { detail: "\u22EF Horizontal dots (centred)" },
-      "dots.v": { detail: "\u22EE Vertical dots" },
-      "dots.down": { detail: "\u22F1 Diagonal dots" },
-      "accent(,hat)": { snippet: "accent($1, hat)", detail: "x\u0302 Hat accent" },
-      "overline()": { snippet: "overline($1)", detail: "x\u0304 Overline" },
-      "underline()": { snippet: "underline($1)", detail: "x\u0332 Underline" },
-      "arrow()": { snippet: "arrow($1)", detail: "x\u20D7 Vector (arrow over)" },
-      "dot()": { snippet: "dot($1)", detail: "\u1E8B Dot accent" },
-      "dot.double()": { snippet: "accent($1, dot.double)", detail: "\u1E8D Double dot accent" },
-      "tilde()": { snippet: "accent($1, tilde)", detail: "x\u0303 Tilde accent" },
-      "overbrace(,)": { snippet: "overbrace($1, $2)", detail: "\u23DE Overbrace with label" },
-      "underbrace(,)": { snippet: "underbrace($1, $2)", detail: "\u23DF Underbrace with label" },
-      "bold()": { snippet: "bold($1)", detail: "\u{1D431} Bold" },
-      "italic()": { snippet: "italic($1)", detail: "\u{1D465} Italic" },
-      "upright()": { snippet: "upright($1)", detail: "x Upright (roman)" },
-      "bb()": { snippet: "bb($1)", detail: "\u211D Blackboard bold (\u211D \u2124 \u2115 \u2102 \u211A)" },
-      "cal()": { snippet: "cal($1)", detail: "\u{1D49C} Calligraphic" },
-      "sans()": { snippet: "sans($1)", detail: "\u{1D5A0} Sans-serif" },
-      "mono()": { snippet: "mono($1)", detail: "x Monospace" },
-      "lr(())": { snippet: "lr(($1))", detail: "( ) Auto-sized parentheses" },
-      "lr([])": { snippet: "lr([$1])", detail: "[ ] Auto-sized square brackets" },
-      "lr({})": { snippet: "lr({$1})", detail: "{ } Auto-sized curly braces" },
-      "abs()": { snippet: "abs($1)", detail: "|x| Auto-sized absolute value" },
-      "norm()": { snippet: "norm($1)", detail: "\u2016x\u2016 Auto-sized norm" },
-      "mat(;)": { snippet: "mat($1, $2; $3, $4)", detail: "Matrix (rows separated by ;)" },
-      "vec(,)": { snippet: "vec($1, $2, $3)", detail: "Column vector" },
-      "cases(,)": { snippet: "cases(\n  $1 &: $2,\n  $3 &: $4\n)", detail: "Piecewise / cases" },
-      "binom(,)": { snippet: "binom($1, $2)", detail: "Binomial coefficient" },
-      alpha: { detail: "\u03B1" },
-      beta: { detail: "\u03B2" },
-      gamma: { detail: "\u03B3" },
-      Gamma: { detail: "\u0393" },
-      delta: { detail: "\u03B4" },
-      Delta: { detail: "\u0394" },
-      epsilon: { detail: "\u03B5" },
-      "epsilon.alt": { detail: "\u03B5 (variant epsilon)" },
-      zeta: { detail: "\u03B6" },
-      eta: { detail: "\u03B7" },
-      theta: { detail: "\u03B8" },
-      "theta.alt": { detail: "\u03D1 (variant theta)" },
-      Theta: { detail: "\u0398" },
-      iota: { detail: "\u03B9" },
-      kappa: { detail: "\u03BA" },
-      lambda: { detail: "\u03BB" },
-      Lambda: { detail: "\u039B" },
-      mu: { detail: "\u03BC" },
-      nu: { detail: "\u03BD" },
-      xi: { detail: "\u03BE" },
-      Xi: { detail: "\u039E" },
-      pi: { detail: "\u03C0" },
-      Pi: { detail: "\u03A0" },
-      rho: { detail: "\u03C1" },
-      "rho.alt": { detail: "\u03F1 (variant rho)" },
-      sigma: { detail: "\u03C3" },
-      "sigma.alt": { detail: "\u03C2 (variant sigma)" },
-      Sigma: { detail: "\u03A3" },
-      tau: { detail: "\u03C4" },
-      upsilon: { detail: "\u03C5" },
-      phi: { detail: "\u03C6" },
-      "phi.alt": { detail: "\u03C6 (variant)" },
-      Phi: { detail: "\u03A6" },
-      chi: { detail: "\u03C7" },
-      psi: { detail: "\u03C8" },
-      Psi: { detail: "\u03A8" },
-      omega: { detail: "\u03C9" },
-      Omega: { detail: "\u03A9" },
-      "planck.reduce": { detail: "\u210F Reduced Planck constant" },
-      ell: { detail: "\u2113 Script l" },
-      RR: { detail: "\u211D Real numbers shorthand" },
-      ZZ: { detail: "\u2124 Integers shorthand" },
-      QQ: { detail: "\u211A Rationals shorthand" },
-      NN: { detail: "\u2115 Natural numbers shorthand" },
-      CC: { detail: "\u2102 Complex numbers shorthand" }
-    };
-  }
-});
-
 // src/extension.ts
 var extension_exports = {};
 __export(extension_exports, {
@@ -73040,8 +73083,6 @@ __export(extension_exports, {
 });
 module.exports = __toCommonJS(extension_exports);
 var vscode4 = __toESM(require("vscode"));
-var path4 = __toESM(require("path"));
-var fs2 = __toESM(require("fs"));
 
 // src/previewProvider.ts
 var vscode3 = __toESM(require("vscode"));
@@ -73169,12 +73210,6 @@ async function compileToSvg(context, content, workspace3) {
   const fullTypst = buildFullTypst(context.extensionPath, content);
   const $typst = makeCompiler(workspace3);
   return $typst.svg({ mainFileContent: fullTypst });
-}
-async function compileToPdf(context, content, workspace3) {
-  await ensureCompiler(context);
-  const fullTypst = buildFullTypst(context.extensionPath, content);
-  const $typst = makeCompiler(workspace3);
-  return $typst.pdf({ mainFileContent: fullTypst });
 }
 function getNonce2() {
   let text = "";
@@ -73338,7 +73373,6 @@ function errorHtml(msg) {
 // src/extension.ts
 function activate(context) {
   const latexData = require_latex_math();
-  const typstData = require_typst_math();
   const editorCfg = vscode4.workspace.getConfiguration("editor", { languageId: "markdown" });
   const qsInspect = editorCfg.inspect("quickSuggestions");
   if (!qsInspect?.globalLanguageValue && !qsInspect?.workspaceLanguageValue) {
@@ -73359,14 +73393,9 @@ function activate(context) {
     );
   }
   const statusItem = vscode4.window.createStatusBarItem(vscode4.StatusBarAlignment.Right, 100);
-  statusItem.command = "mdf.switchMode";
-  statusItem.tooltip = "mdf: click to switch HTML / Typst mode";
+  statusItem.tooltip = "mdf";
+  statusItem.text = "MDF";
   context.subscriptions.push(statusItem);
-  function updateStatus() {
-    const mode = vscode4.workspace.getConfiguration("mdf").get("mode", "html");
-    statusItem.text = `MDF: ${mode.toUpperCase()}`;
-  }
-  updateStatus();
   function syncStatusVisibility() {
     const lang = vscode4.window.activeTextEditor?.document.languageId;
     if (lang === "markdown") {
@@ -73380,23 +73409,8 @@ function activate(context) {
     vscode4.window.onDidChangeActiveTextEditor(() => syncStatusVisibility())
   );
   context.subscriptions.push(
-    vscode4.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("mdf.mode")) {
-        updateStatus();
-      }
-    })
-  );
-  context.subscriptions.push(
-    vscode4.commands.registerCommand("mdf.switchMode", async () => {
-      const current = vscode4.workspace.getConfiguration("mdf").get("mode", "html");
-      const next = current === "html" ? "typst" : "html";
-      await vscode4.workspace.getConfiguration("mdf").update(
-        "mode",
-        next,
-        vscode4.ConfigurationTarget.Global
-      );
-      updateStatus();
-      vscode4.window.showInformationMessage(`mdf: switched to ${next.toUpperCase()} mode`);
+    vscode4.commands.registerCommand("mdf.switchMode", () => {
+      vscode4.window.showInformationMessage("mdf: Typst mode is coming soon! Stay tuned.");
     })
   );
   context.subscriptions.push(
@@ -73423,24 +73437,19 @@ function activate(context) {
         title: "Export PDF"
       });
       if (!outputUri) return;
-      const mode = vscode4.workspace.getConfiguration("mdf").get("mode", "html");
       await vscode4.window.withProgress(
-        { location: vscode4.ProgressLocation.Notification, title: `mdf: Exporting PDF (${mode.toUpperCase()})\u2026` },
+        // TODO: re-enable when Typst pipeline is ready
+        // { location: vscode.ProgressLocation.Notification, title: `mdf: Exporting PDF (${mode.toUpperCase()})…` },
+        { location: vscode4.ProgressLocation.Notification, title: "mdf: Exporting PDF\u2026" },
         async () => {
           try {
-            if (mode === "typst") {
-              const workspace3 = path4.dirname(doc.uri.fsPath);
-              const pdfBuffer = await compileToPdf(context, doc.getText(), workspace3);
-              fs2.writeFileSync(outputUri.fsPath, pdfBuffer);
-            } else {
-              await new Promise((resolve2, reject) => {
-                const { execFile } = require("child_process");
-                execFile("mdf", [doc.uri.fsPath, outputUri.fsPath], (err) => {
-                  if (err) reject(new Error("mdf CLI not found. Install it: npm install -g @kobekeye/mdf"));
-                  else resolve2();
-                });
+            await new Promise((resolve2, reject) => {
+              const { execFile } = require("child_process");
+              execFile("mdf", [doc.uri.fsPath, outputUri.fsPath], (err) => {
+                if (err) reject(new Error("mdf CLI not found. Install it: npm install -g @kobekeye/mdf"));
+                else resolve2();
               });
-            }
+            });
             vscode4.window.showInformationMessage(`mdf: PDF saved to ${outputUri.fsPath}`);
           } catch (err) {
             vscode4.window.showErrorMessage(`mdf: Export failed \u2014 ${String(err)}`);
@@ -73454,8 +73463,6 @@ function activate(context) {
       "markdown",
       {
         provideCompletionItems() {
-          const mode = vscode4.workspace.getConfiguration("mdf").get("mode", "html");
-          if (mode !== "html") return [];
           return Object.entries(latexData).map(([key, entry]) => {
             const label = "\\" + key;
             const item = new vscode4.CompletionItem(label, vscode4.CompletionItemKind.Snippet);
@@ -73470,23 +73477,6 @@ function activate(context) {
       },
       "\\"
     )
-  );
-  context.subscriptions.push(
-    vscode4.languages.registerCompletionItemProvider("markdown", {
-      provideCompletionItems() {
-        const mode = vscode4.workspace.getConfiguration("mdf").get("mode", "html");
-        if (mode !== "typst") return [];
-        return Object.entries(typstData).map(([key, entry]) => {
-          const item = new vscode4.CompletionItem(key, vscode4.CompletionItemKind.Snippet);
-          const body = entry.snippet !== void 0 ? entry.snippet : key;
-          item.insertText = new vscode4.SnippetString(body);
-          item.filterText = key;
-          item.detail = entry.detail;
-          item.documentation = new vscode4.MarkdownString(`\`${key}\``);
-          return item;
-        });
-      }
-    })
   );
 }
 function deactivate() {

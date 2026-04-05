@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
-import * as fs from 'fs';
+// TODO: re-enable when Typst pipeline is ready
+// import * as path from 'path';
+// import * as fs from 'fs';
 import { openOrRevealPreview, disposeAll } from './previewProvider';
-import { compileToPdf } from './typstPreview';
+// TODO: re-enable when Typst pipeline is ready
+// import { compileToPdf } from './typstPreview';
 
 interface MathEntry {
   snippet?: string;
@@ -13,7 +15,8 @@ type MathData = Record<string, MathEntry>;
 
 export function activate(context: vscode.ExtensionContext): void {
   const latexData: MathData = require('../data/latex-math.json');
-  const typstData: MathData = require('../data/typst-math.json');
+  // TODO: re-enable when Typst pipeline is ready
+  // const typstData: MathData = require('../data/typst-math.json');
 
   // ── Enable quickSuggestions for markdown ────────────────────────────────
   // VS Code's built-in [markdown] default sets quickSuggestions: off,
@@ -41,16 +44,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // ── Status bar item ──────────────────────────────────────────────────────
   const statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-  statusItem.command = 'mdf.switchMode';
-  statusItem.tooltip = 'mdf: click to switch HTML / Typst mode';
+  statusItem.tooltip = 'mdf';
+  statusItem.text = 'MDF';
   context.subscriptions.push(statusItem);
-
-  function updateStatus(): void {
-    const mode = vscode.workspace.getConfiguration('mdf').get<string>('mode', 'html');
-    statusItem.text = `MDF: ${mode.toUpperCase()}`;
-  }
-
-  updateStatus();
 
   // Show only when a markdown file is active
   function syncStatusVisibility(): void {
@@ -68,26 +64,33 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.onDidChangeActiveTextEditor(() => syncStatusVisibility()),
   );
 
-  context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration(e => {
-      if (e.affectsConfiguration('mdf.mode')) {
-        updateStatus();
-      }
-    }),
-  );
+  // TODO: re-enable when Typst pipeline is ready
+  // context.subscriptions.push(
+  //   vscode.workspace.onDidChangeConfiguration(e => {
+  //     if (e.affectsConfiguration('mdf.mode')) {
+  //       updateStatus();
+  //     }
+  //   }),
+  // );
 
   // ── Commands ─────────────────────────────────────────────────────────────
+  // TODO: re-enable when Typst pipeline is ready
+  // context.subscriptions.push(
+  //   vscode.commands.registerCommand('mdf.switchMode', async () => {
+  //     const current = vscode.workspace.getConfiguration('mdf').get<string>('mode', 'html');
+  //     const next = current === 'html' ? 'typst' : 'html';
+  //     await vscode.workspace.getConfiguration('mdf').update(
+  //       'mode',
+  //       next,
+  //       vscode.ConfigurationTarget.Global,
+  //     );
+  //     updateStatus();
+  //     vscode.window.showInformationMessage(`mdf: switched to ${next.toUpperCase()} mode`);
+  //   }),
+  // );
   context.subscriptions.push(
-    vscode.commands.registerCommand('mdf.switchMode', async () => {
-      const current = vscode.workspace.getConfiguration('mdf').get<string>('mode', 'html');
-      const next = current === 'html' ? 'typst' : 'html';
-      await vscode.workspace.getConfiguration('mdf').update(
-        'mode',
-        next,
-        vscode.ConfigurationTarget.Global,
-      );
-      updateStatus();
-      vscode.window.showInformationMessage(`mdf: switched to ${next.toUpperCase()} mode`);
+    vscode.commands.registerCommand('mdf.switchMode', () => {
+      vscode.window.showInformationMessage('mdf: Typst mode is coming soon! Stay tuned.');
     }),
   );
 
@@ -118,26 +121,39 @@ export function activate(context: vscode.ExtensionContext): void {
       });
       if (!outputUri) return;
 
-      const mode = vscode.workspace.getConfiguration('mdf').get<string>('mode', 'html');
+      // TODO: re-enable when Typst pipeline is ready
+      // const mode = vscode.workspace.getConfiguration('mdf').get<string>('mode', 'html');
 
       await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: `mdf: Exporting PDF (${mode.toUpperCase()})…` },
+        // TODO: re-enable when Typst pipeline is ready
+        // { location: vscode.ProgressLocation.Notification, title: `mdf: Exporting PDF (${mode.toUpperCase()})…` },
+        { location: vscode.ProgressLocation.Notification, title: 'mdf: Exporting PDF…' },
         async () => {
           try {
-            if (mode === 'typst') {
-              const workspace = path.dirname(doc.uri.fsPath);
-              const pdfBuffer = await compileToPdf(context, doc.getText(), workspace);
-              fs.writeFileSync(outputUri.fsPath, pdfBuffer);
-            } else {
-              // HTML mode: spawn the globally installed mdf CLI
-              await new Promise<void>((resolve, reject) => {
-                const { execFile } = require('child_process') as typeof import('child_process');
-                execFile('mdf', [doc.uri.fsPath, outputUri.fsPath], (err) => {
-                  if (err) reject(new Error('mdf CLI not found. Install it: npm install -g @kobekeye/mdf'));
-                  else resolve();
-                });
+            // TODO: re-enable when Typst pipeline is ready
+            // if (mode === 'typst') {
+            //   const workspace = path.dirname(doc.uri.fsPath);
+            //   const pdfBuffer = await compileToPdf(context, doc.getText(), workspace);
+            //   fs.writeFileSync(outputUri.fsPath, pdfBuffer);
+            // } else {
+            //   // HTML mode: spawn the globally installed mdf CLI
+            //   await new Promise<void>((resolve, reject) => {
+            //     const { execFile } = require('child_process') as typeof import('child_process');
+            //     execFile('mdf', [doc.uri.fsPath, outputUri.fsPath], (err) => {
+            //       if (err) reject(new Error('mdf CLI not found. Install it: npm install -g @kobekeye/mdf'));
+            //       else resolve();
+            //     });
+            //   });
+            // }
+
+            // HTML mode only (Typst temporarily disabled)
+            await new Promise<void>((resolve, reject) => {
+              const { execFile } = require('child_process') as typeof import('child_process');
+              execFile('mdf', [doc.uri.fsPath, outputUri.fsPath], (err) => {
+                if (err) reject(new Error('mdf CLI not found. Install it: npm install -g @kobekeye/mdf'));
+                else resolve();
               });
-            }
+            });
             vscode.window.showInformationMessage(`mdf: PDF saved to ${outputUri.fsPath}`);
           } catch (err) {
             vscode.window.showErrorMessage(`mdf: Export failed — ${String(err)}`);
@@ -154,8 +170,9 @@ export function activate(context: vscode.ExtensionContext): void {
       'markdown',
       {
         provideCompletionItems(): vscode.CompletionItem[] {
-          const mode = vscode.workspace.getConfiguration('mdf').get<string>('mode', 'html');
-          if (mode !== 'html') return [];
+          // TODO: re-enable when Typst pipeline is ready
+          // const mode = vscode.workspace.getConfiguration('mdf').get<string>('mode', 'html');
+          // if (mode !== 'html') return [];
 
           return Object.entries(latexData).map(([key, entry]) => {
             const label = '\\' + key;
@@ -175,25 +192,26 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
   );
 
-  // Typst mode: no backslash prefix, Ctrl+Space inside $...$
-  context.subscriptions.push(
-    vscode.languages.registerCompletionItemProvider('markdown', {
-      provideCompletionItems(): vscode.CompletionItem[] {
-        const mode = vscode.workspace.getConfiguration('mdf').get<string>('mode', 'html');
-        if (mode !== 'typst') return [];
-
-        return Object.entries(typstData).map(([key, entry]) => {
-          const item = new vscode.CompletionItem(key, vscode.CompletionItemKind.Snippet);
-          const body = entry.snippet !== undefined ? entry.snippet : key;
-          item.insertText = new vscode.SnippetString(body);
-          item.filterText = key;
-          item.detail = entry.detail;
-          item.documentation = new vscode.MarkdownString(`\`${key}\``);
-          return item;
-        });
-      },
-    }),
-  );
+  // TODO: re-enable when Typst pipeline is ready
+  // // Typst mode: no backslash prefix, Ctrl+Space inside $...$
+  // context.subscriptions.push(
+  //   vscode.languages.registerCompletionItemProvider('markdown', {
+  //     provideCompletionItems(): vscode.CompletionItem[] {
+  //       const mode = vscode.workspace.getConfiguration('mdf').get<string>('mode', 'html');
+  //       if (mode !== 'typst') return [];
+  //
+  //       return Object.entries(typstData).map(([key, entry]) => {
+  //         const item = new vscode.CompletionItem(key, vscode.CompletionItemKind.Snippet);
+  //         const body = entry.snippet !== undefined ? entry.snippet : key;
+  //         item.insertText = new vscode.SnippetString(body);
+  //         item.filterText = key;
+  //         item.detail = entry.detail;
+  //         item.documentation = new vscode.MarkdownString(`\`${key}\``);
+  //         return item;
+  //       });
+  //     },
+  //   }),
+  // );
 }
 
 export function deactivate(): void {
