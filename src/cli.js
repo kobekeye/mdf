@@ -105,7 +105,13 @@ process.on('SIGINT', () => {
 // parse command line arguments
 const args = process.argv.slice(2);
 
-if (args.length === 0) {
+if (args.includes('-v') || args.includes('--version')) {
+    const pkg = require('../package.json');
+    console.log(pkg.version);
+    process.exit(0);
+}
+
+function printHelp() {
     console.log(`
 usage: mdf <input.md> [output.pdf] [-w|--watch] [--theme <name>]
 
@@ -115,6 +121,8 @@ usage: mdf <input.md> [output.pdf] [-w|--watch] [--theme <name>]
   -w, --watch     watch for changes and re-convert automatically
   --theme <name>  use a custom theme (default: default)
                   available: default, claude
+  -h, --help      show this help message
+  -v, --version   show version number
 
 examples:
   mdf README.md
@@ -122,6 +130,10 @@ examples:
   mdf doc.md --theme claude
     `);
     process.exit(0);
+}
+
+if (args.length === 0 || args.includes('-h') || args.includes('--help')) {
+    printHelp();
 }
 
 const watchMode = args.includes('--watch') || args.includes('-w');
