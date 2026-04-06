@@ -1,10 +1,5 @@
 # mdf
-📢 version 1.2.0 core updates: 
-1. **vscode extension will be available to handle preview.**
-2. Fixed watch problems on `vim/nvim`.
-3. puppeteer -> puppeteer-core to prevent cache clutter and reduce download size.
-4. Added syntactical sugar such as `:::center :::`, `:::right :::` and so on. 
-5. Added `asterisk` theme, one can try by using `mdf input.md --theme asterisk`.
+📢 **v1.2.0** — VSCode extension with preview, new themes.
 
 <img width="370" height="527" alt="mdfintro1" src="https://github.com/user-attachments/assets/30436af4-2f05-4678-ad80-64daa47a5f7c" />
 <img width="372" height="527" alt="mdfintro2" src="https://github.com/user-attachments/assets/79bab5be-2ea6-430c-8075-42870caa41bc" />
@@ -42,7 +37,7 @@ npm install -g @kobekeye/mdf
 ```
 
 ### Windows
-If one hasn't install nodejs, click [here](https://nodejs.org) to install. Or if one wants to use [nvm-windows](https://github.com/coreybutler/nvm-windows) is also available. After installing nodejs/nvm, type
+If you haven't install nodejs, click [here](https://nodejs.org) to install. Or if you want to use [nvm-windows](https://github.com/coreybutler/nvm-windows) is also available. After installing nodejs/nvm, type
 ```bash
 npm install -g @kobekeye/mdf
 ```
