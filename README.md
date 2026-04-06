@@ -1,5 +1,10 @@
 # mdf
-📢 version 1.1.5: Fixed KaTeX CSS path which leads to broken LaTeX rendering.
+📢 version 1.2.0 core updates: 
+1. **vscode extension will be available to handle preview.**
+2. Fixed watch problems on `vim/nvim`.
+3. puppeteer -> puppeteer-core to prevent cache clutter and reduce download size.
+4. Added syntactical sugar such as `:::center :::`, `:::right :::` and so on. 
+5. Added `asterisk` theme, one can try by using `mdf input.md --theme asterisk`.
 
 <img width="370" height="527" alt="mdfintro1" src="https://github.com/user-attachments/assets/30436af4-2f05-4678-ad80-64daa47a5f7c" />
 <img width="372" height="527" alt="mdfintro2" src="https://github.com/user-attachments/assets/79bab5be-2ea6-430c-8075-42870caa41bc" />
@@ -13,19 +18,16 @@ Welcome to mdf! Please note that this project is currently in the MVP (Minimum V
 - **Math formulas** — inline and block LaTeX via KaTeX (`$...$` and `$$...$$`)
 - **Table of contents** — insert `[TOC]` anywhere in your document
 - **Callout blocks** — `:::info`, `:::warning`, `:::danger`, `:::success`
+- **Syntactical sugar** — `:::center`, `:::right`, `:::left`
 - **Task lists** — `- [ ]` and `- [x]`
 - **Tables, images, blockquotes**
 - **Manual page breaks** — insert `==page==` on its own line
-- **CJK support** — uses Inter + Noto Sans TC via Google Fonts (requires internet on first run)
+- **CJK support** — uses Inter + Noto Sans TC via Google Fonts for the default theme (requires download on first run)
 
 ## Installation
-### Windows
-If one hasn't install nodejs, click [here](https://nodejs.org) to install. After installing nodejs, type
-```bash
-npm install -g @kobekeye/mdf
-```
+
 ### Linux / macOS
-It is highly recommended to use [nvm](https://github.com/nvm-sh/nvm) to manage permissions. Using sudo with global npm installs is not recommended.
+It is highly recommended to use [nvm](https://github.com/nvm-sh/nvm)/[fnm](https://github.com/Schniz/fnm) to manage permissions. Using sudo with global npm installs is not recommended. Below shows an example for the [nvm](https://github.com/nvm-sh/nvm) one.
 #### 1. Install nvm
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
@@ -38,15 +40,25 @@ nvm install --lts
 ```bash
 npm install -g @kobekeye/mdf
 ```
+
+### Windows
+If one hasn't install nodejs, click [here](https://nodejs.org) to install. Or if one wants to use [nvm-windows](https://github.com/coreybutler/nvm-windows) is also available. After installing nodejs/nvm, type
+```bash
+npm install -g @kobekeye/mdf
+```
 ## Usage
+`mdf <input.md> [output.pdf] [-w|--watch] [--theme <name>]`
+#### Examples: 
 ```bash
 mdf input.md              # outputs input.pdf
 mdf input.md output.pdf   # custom output name
+mdf input.md --theme asterisk # outputs input.pdf with theme "asterisk"
 ```
 To watch the output pdf file, use 
 ```bash
 mdf input.md -w             # outputs input.pdf and watches for changes
 mdf input.md output.pdf -w  # custom output name and watches for changes
+mdf input.md -w --theme asterisk # watches input.pdf with theme "asterisk"
 ```
 Or, if you want to try without installation, 
 ```bash
@@ -74,7 +86,7 @@ Otherwise, `npx` might use a cached version, causing you to encounter bugs that 
 
 ### Math
 
-```markdown
+```latex
 Inline: $E = mc^2$
 
 Block:

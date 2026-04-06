@@ -3,6 +3,7 @@ useless/
 .vscode/
 *.pdf
 *.md
+!README.md
 .claude/
 test/
 test-image.png

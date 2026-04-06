@@ -6,7 +6,7 @@ node_modules/
 useless/
 *.md
 !test/**/*.md
-
+!README.md
 # build artifacts
 out/
 *.vsix
