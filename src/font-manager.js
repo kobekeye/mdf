@@ -109,7 +109,7 @@ async function ensureFonts(fontSpecs, themeName) {
     const fontNames = [...new Set(missing.map(m => m.family))].join(', ');
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     const answer = await new Promise(resolve => {
-        rl.question(`\x1b[36mTo use ${label} theme, install fonts: ${fontNames}? [Y/n] \x1b[0m`, resolve);
+        rl.question(`\x1b[36mTo use ${label} theme, install fonts: ${fontNames} at ~/.mdf/fonts/ ? [Y/n] \x1b[0m`, resolve);
     });
     rl.close();
 

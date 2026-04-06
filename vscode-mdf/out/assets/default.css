@@ -65,6 +65,14 @@ h4 {
     color: #444;
 }
 
+/* reduce gap between consecutive headings with no content in between */
+h1+h2, h1+h3, h1+h4,
+h2+h3, h2+h4,
+h3+h4,
+h2+h2, h3+h3, h4+h4 {
+    margin-top: 0.6em;
+}
+
 /* paragraphs and texts */
 p {
     margin: 0 0 1em;
@@ -277,6 +285,10 @@ figure {
 
 .align-right {
     text-align: right;
+}
+
+.align-left {
+    text-align: left;
 }
 
 /* ===== Callout container blocks ===== */

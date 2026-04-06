@@ -1,10 +1,10 @@
 node_modules/
 useless/
 .vscode/
-vscode-mdf/
 *.pdf
 *.md
 .claude/
+test/
 test-image.png
 package-lock.json
 .gitignore

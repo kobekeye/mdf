@@ -2,9 +2,8 @@ node_modules/
 .claude/
 *.pdf
 .vscode/
-.mdpdf-temp-*.html
+.mdf-temp-*.html
 useless/
-vscode-mdf/
 *.md
 !test/**/*.md
 

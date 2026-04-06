@@ -287,6 +287,10 @@ figure {
     text-align: right;
 }
 
+.align-left {
+    text-align: left;
+}
+
 /* ===== Callout container blocks ===== */
 .callout {
     margin: 1.2em 0;

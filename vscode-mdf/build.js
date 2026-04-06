@@ -25,6 +25,7 @@ function copyAssets() {
   cpSync(path.join(mdfRoot, 'node_modules/highlight.js/styles/github-dark.css'), path.join(assetsDir, 'github-dark.css'));
   cpSync(path.join(mdfRoot, 'node_modules/markdown-it-texmath/css/texmath.css'), path.join(assetsDir, 'texmath.css'));
   cpSync(path.join(mdfRoot, 'themes/default.css'), path.join(assetsDir, 'default.css'));
+  cpSync(path.join(mdfRoot, 'themes/asterisk.css'), path.join(assetsDir, 'asterisk.css'));
   cpSync(path.join(mdfRoot, 'themes/default.typ'), path.join(assetsDir, 'default.typ'));
 }
 

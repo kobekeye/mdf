@@ -5,6 +5,10 @@
   "version": "0.1.0",
   "publisher": "kobekeye",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kobekeye/mdf"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -71,6 +75,16 @@
           ],
           "default": "html",
           "description": "mdf 模式：影響 math snippets、preview 行為和 PDF 輸出 pipeline"
+        },
+        "mdf.theme": {
+          "type": "string",
+          "enum": ["default", "asterisk"],
+          "enumDescriptions": [
+            "Default — Inter + Noto Sans TC, clean and modern",
+            "Asterisk — Source Serif 4 + Noto Serif TC, warm and refined"
+          ],
+          "default": "default",
+          "description": "Preview 與 PDF 輸出使用的主題"
         }
       }
     }

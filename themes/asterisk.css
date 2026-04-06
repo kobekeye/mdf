@@ -1,5 +1,5 @@
-/* @mdf-fonts: Source Serif 4:400,700; Noto Serif TC:400,700; JetBrains Mono:400,700 */
-/* ===== claude theme — warm, refined, mature ===== */
+/* @mdf-fonts: Tinos:400,700; Noto Serif TC:400,700; JetBrains Mono:400,700 */
+/* ===== asterisk theme — warm, refined, mature ===== */
 
 *,
 *::before,
@@ -8,7 +8,7 @@
 }
 
 body {
-    font-family: 'Georgia', 'noto sans tc', serif;
+    font-family: 'Tinos', 'noto sans tc', serif;
     font-size: 15px;
     line-height: 1.8;
     color: #333333;
@@ -28,7 +28,7 @@ h3,
 h4,
 h5,
 h6 {
-    font-family: 'Source Serif 4: 400', 'noto serif tc', 'Georgia', serif;
+    font-family: 'noto serif tc', serif;
     font-weight: 700;
     line-height: 1.35;
     margin-top: 2.2em;
@@ -329,6 +329,10 @@ figure {
 
 .align-right {
     text-align: right;
+}
+
+.align-left {
+    text-align: left;
 }
 
 /* ===== Callout container blocks ===== */

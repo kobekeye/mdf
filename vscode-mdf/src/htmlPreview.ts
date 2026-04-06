@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs';
 
 // Bundled by esbuild at build time (resolved from ../../src/renderer.js)
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -11,6 +12,27 @@ export function renderBodyHtml(content: string): string {
   return renderBodyHtmlFromString(content);
 }
 
+/**
+ * Parse @mdf-fonts metadata from theme CSS content and build a Google Fonts URL.
+ * e.g. "Inter:400,700; Noto Sans TC:400,700" → Google Fonts CSS2 URL
+ */
+function buildGoogleFontsUrl(themeCss: string): string | null {
+  const match = themeCss.match(/\/\*\s*@mdf-fonts:\s*([^*]+?)\s*\*\//);
+  if (!match) return null;
+
+  const families = match[1].trim().split(';').map(s => s.trim()).filter(Boolean);
+  const params = families.map(spec => {
+    const colonIdx = spec.lastIndexOf(':');
+    if (colonIdx === -1) return null;
+    const family = spec.slice(0, colonIdx).trim().replace(/ /g, '+');
+    const weights = spec.slice(colonIdx + 1).split(',').map(w => w.trim()).filter(Boolean);
+    return `family=${family}:wght@${weights.join(';')}`;
+  }).filter(Boolean);
+
+  if (params.length === 0) return null;
+  return `https://fonts.googleapis.com/css2?${params.join('&')}&display=swap`;
+}
+
 function getNonce(): string {
   let text = '';
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -20,10 +42,13 @@ function getNonce(): string {
   return text;
 }
 
+const AVAILABLE_THEMES = ['default', 'asterisk'];
+
 export function buildWebviewHtml(
   panel: vscode.WebviewPanel,
   context: vscode.ExtensionContext,
   bodyHtml: string,
+  theme: string = 'default',
 ): string {
   const webview = panel.webview;
   const assetsDir = path.join(context.extensionPath, 'out', 'assets');
@@ -34,7 +59,7 @@ export function buildWebviewHtml(
   const katexCssUri = toAssetUri('katex.min.css');
   const hljsCssUri = toAssetUri('github-dark.css');
   const texmathCssUri = toAssetUri('texmath.css');
-  const themeCssUri = toAssetUri('default.css');
+  const themeCssUri = toAssetUri(`${theme}.css`);
 
   const previewCssUri = webview.asWebviewUri(
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'preview.css')),
@@ -42,6 +67,19 @@ export function buildWebviewHtml(
   const scriptUri = webview.asWebviewUri(
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'html-preview.js')),
   );
+
+  // Parse @mdf-fonts from theme CSS to build the correct Google Fonts link
+  const themeCssPath = path.join(assetsDir, `${theme}.css`);
+  const themeCssContent = fs.existsSync(themeCssPath) ? fs.readFileSync(themeCssPath, 'utf-8') : '';
+  const fontsUrl = buildGoogleFontsUrl(themeCssContent);
+  const fontsLink = fontsUrl
+    ? `<link href="${fontsUrl}" rel="stylesheet">`
+    : '';
+
+  // Build theme options for the selector
+  const themeOptions = AVAILABLE_THEMES
+    .map(t => `<option value="${t}"${t === theme ? ' selected' : ''}>${t}</option>`)
+    .join('');
 
   const nonce = getNonce();
   const csp = [
@@ -65,9 +103,12 @@ export function buildWebviewHtml(
   <link rel="stylesheet" href="${previewCssUri}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+  ${fontsLink}
 </head>
 <body>
+  <div id="mdf-toolbar">
+    <select id="mdf-theme-select">${themeOptions}</select>
+  </div>
   <div id="mdf-content">${bodyHtml}</div>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>

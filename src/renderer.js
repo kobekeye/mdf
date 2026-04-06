@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { parseFontMeta, ensureFonts, generateFontFaceCSS } = require('./font-manager');
+const { replaceOutsideCodeBlocks } = require('./preprocess');
 const MarkdownIt = require('markdown-it');
 const texmath = require('markdown-it-texmath');
 const katex = require('katex');
@@ -45,8 +46,8 @@ const md = new MarkdownIt({
         slugify: (s) => encodeURIComponent(String(s).trim().toLowerCase().replace(/\s+/g, '-')),
     })
     .use(taskLists, { enabled: true });
-// --- Alignment containers: :::center, :::right ---
-const ALIGNMENTS = ['center', 'right'];
+// --- Alignment containers: :::center, :::right :::left ---
+const ALIGNMENTS = ['center', 'right', 'left'];
 for (const align of ALIGNMENTS) {
     md.use(container, align, {
         render(tokens, idx) {
@@ -200,8 +201,11 @@ async function prepareFonts() {
  * @returns {string} rendered HTML body content
  */
 function renderBodyHtmlFromString(content) {
-    content = content.replace(/^==page==$/gm, '\n<div class="page-break"></div>\n');
-    content = preprocessTOC(content);
+    content = replaceOutsideCodeBlocks(content, (text) => {
+        text = text.replace(/^==page==$/gm, '\n<div class="page-break"></div>\n');
+        text = preprocessTOC(text);
+        return text;
+    });
     let html = md.render(content);
     html = processTOC(html);
     return html;
@@ -226,8 +230,11 @@ function renderBodyHtml(markdownFilePath) {
  */
 function renderToHtml(markdownFilePath, options = {}) {
     let markdownContent = fs.readFileSync(markdownFilePath, 'utf-8');
-    markdownContent = markdownContent.replace(/^==page==$/gm, '\n\n<div class="page-break"></div>\n\n');
-    markdownContent = preprocessTOC(markdownContent);
+    markdownContent = replaceOutsideCodeBlocks(markdownContent, (text) => {
+        text = text.replace(/^==page==$/gm, '\n\n<div class="page-break"></div>\n\n');
+        text = preprocessTOC(text);
+        return text;
+    });
     const { themeCSS, fontSpecs, hljsCSS, texmathCSS } = loadCSS();
     const fontFaceCSS = generateFontFaceCSS(fontSpecs);
     let bodyHtml = md.render(markdownContent);

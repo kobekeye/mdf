@@ -120,14 +120,14 @@ usage: mdf <input.md> [output.pdf] [-w|--watch] [--theme <name>]
                   (if omitted, it will automatically use the same name, e.g. input.pdf)
   -w, --watch     watch for changes and re-convert automatically
   --theme <name>  use a custom theme (default: default)
-                  available: default, claude
+                  available: default, asterisk
   -h, --help      show this help message
   -v, --version   show version number
 
 examples:
   mdf README.md
   mdf doc.md custom-name.pdf
-  mdf doc.md --theme claude
+  mdf doc.md --theme asterisk
     `);
     process.exit(0);
 }

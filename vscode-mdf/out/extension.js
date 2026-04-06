@@ -35,7 +35,7 @@ var require_font_manager = __commonJS({
   "../src/font-manager.js"(exports2, module2) {
     "use strict";
     var https = require("https");
-    var fs2 = require("fs");
+    var fs3 = require("fs");
     var path4 = require("path");
     var os = require("os");
     var readline = require("readline");
@@ -56,17 +56,17 @@ var require_font_manager = __commonJS({
     }
     function downloadFile(url, destPath) {
       return new Promise((resolve2, reject) => {
-        const file = fs2.createWriteStream(destPath);
+        const file = fs3.createWriteStream(destPath);
         https.get(url, { headers: { "User-Agent": "Mozilla/4.0" } }, (res) => {
           if (res.statusCode !== 200) {
-            file.close(() => fs2.unlink(destPath, () => {
+            file.close(() => fs3.unlink(destPath, () => {
             }));
             return reject(new Error(`HTTP ${res.statusCode}`));
           }
           res.pipe(file);
           file.on("finish", () => file.close(resolve2));
           file.on("error", (err) => {
-            fs2.unlink(destPath, () => {
+            fs3.unlink(destPath, () => {
             });
             reject(err);
           });
@@ -108,13 +108,13 @@ var require_font_manager = __commonJS({
     async function ensureFonts(fontSpecs, themeName) {
       if (!fontSpecs || fontSpecs.length === 0) return;
       const cacheDir = getFontCacheDir();
-      fs2.mkdirSync(cacheDir, { recursive: true });
+      fs3.mkdirSync(cacheDir, { recursive: true });
       const missing = [];
       for (const { family, weights } of fontSpecs) {
         const key = family.replace(/ /g, "");
         for (const weight of weights) {
           const filename = `${key}-${weight}.ttf`;
-          if (!fs2.existsSync(path4.join(cacheDir, filename))) {
+          if (!fs3.existsSync(path4.join(cacheDir, filename))) {
             missing.push({ family, weight, key, filename });
           }
         }
@@ -124,7 +124,7 @@ var require_font_manager = __commonJS({
       const fontNames = [...new Set(missing.map((m) => m.family))].join(", ");
       const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
       const answer = await new Promise((resolve2) => {
-        rl.question(`\x1B[36mTo use ${label} theme, install fonts: ${fontNames}? [Y/n] \x1B[0m`, resolve2);
+        rl.question(`\x1B[36mTo use ${label} theme, install fonts: ${fontNames} at ~/.mdf/fonts/ ? [Y/n] \x1B[0m`, resolve2);
       });
       rl.close();
       const a = answer.trim().toLowerCase();
@@ -170,7 +170,7 @@ var require_font_manager = __commonJS({
         const key = family.replace(/ /g, "");
         for (const weight of weights) {
           const filePath = path4.join(cacheDir, `${key}-${weight}.ttf`);
-          if (fs2.existsSync(filePath)) {
+          if (fs3.existsSync(filePath)) {
             const fileUrl = "file://" + filePath.split(path4.sep).join("/");
             blocks.push(
               `@font-face { font-family: '${family}'; font-weight: ${weight}; font-style: normal; src: url('${fileUrl}') format('truetype'); }`
@@ -181,6 +181,46 @@ var require_font_manager = __commonJS({
       return blocks.join("\n");
     }
     module2.exports = { parseFontMeta, ensureFonts, generateFontFaceCSS, getFontCacheDir };
+  }
+});
+
+// ../src/preprocess.js
+var require_preprocess = __commonJS({
+  "../src/preprocess.js"(exports2, module2) {
+    "use strict";
+    function replaceOutsideCodeBlocks(content, replaceFn) {
+      const lines = content.split("\n");
+      const segments = [];
+      let buf = [];
+      let inFence = false;
+      let fenceChar = "";
+      let fenceLen = 0;
+      for (const line of lines) {
+        if (!inFence) {
+          const m = line.match(/^(`{3,}|~{3,})/);
+          if (m) {
+            if (buf.length) segments.push({ code: false, text: buf.join("\n") });
+            buf = [line];
+            inFence = true;
+            fenceChar = m[1][0];
+            fenceLen = m[1].length;
+          } else {
+            buf.push(line);
+          }
+        } else {
+          buf.push(line);
+          const re = new RegExp(`^\\${fenceChar}{${fenceLen},}\\s*$`);
+          if (re.test(line)) {
+            segments.push({ code: true, text: buf.join("\n") });
+            buf = [];
+            inFence = false;
+          }
+        }
+      }
+      if (buf.length) segments.push({ code: inFence, text: buf.join("\n") });
+      return segments.map((s) => s.code ? s.text : replaceFn(s.text)).join("\n");
+    }
+    module2.exports = { replaceOutsideCodeBlocks };
   }
 });
 
@@ -72583,9 +72623,10 @@ var require_index_cjs5 = __commonJS({
 var require_renderer = __commonJS({
   "../src/renderer.js"(exports2, module2) {
     "use strict";
-    var fs2 = require("fs");
+    var fs3 = require("fs");
     var path4 = require("path");
     var { parseFontMeta, ensureFonts, generateFontFaceCSS } = require_font_manager();
+    var { replaceOutsideCodeBlocks } = require_preprocess();
     var MarkdownIt = require_index_cjs4();
     var texmath = require_texmath();
     var katex = require_katex();
@@ -72615,7 +72656,7 @@ var require_renderer = __commonJS({
       // e.g. hello world 你好 -> hello-world-%E4%BD%A0%E5%A5%BD(你好)
       slugify: (s) => encodeURIComponent(String(s).trim().toLowerCase().replace(/\s+/g, "-"))
     }).use(taskLists, { enabled: true });
-    var ALIGNMENTS = ["center", "right"];
+    var ALIGNMENTS = ["center", "right", "left"];
     for (const align of ALIGNMENTS) {
       md.use(container, align, {
         render(tokens, idx) {
@@ -72715,46 +72756,52 @@ ${titleHtml}`;
     var themeCache = {};
     var cachedHljsCSS = null;
     var cachedTexmathCSS = null;
-    var currentTheme = "default";
+    var currentTheme2 = "default";
     function setTheme(name) {
-      currentTheme = name;
+      currentTheme2 = name;
     }
     function loadCSS() {
-      if (!themeCache[currentTheme]) {
-        const themePath = path4.join(root, "themes", `${currentTheme}.css`);
-        if (!fs2.existsSync(themePath)) {
-          console.error(`\x1B[31mError: theme not found: ${currentTheme}\x1B[0m`);
+      if (!themeCache[currentTheme2]) {
+        const themePath = path4.join(root, "themes", `${currentTheme2}.css`);
+        if (!fs3.existsSync(themePath)) {
+          console.error(`\x1B[31mError: theme not found: ${currentTheme2}\x1B[0m`);
           process.exit(1);
         }
-        const themeContent = fs2.readFileSync(themePath, "utf-8");
-        themeCache[currentTheme] = { css: themeContent, fontSpecs: parseFontMeta(themeContent) };
+        const themeContent = fs3.readFileSync(themePath, "utf-8");
+        themeCache[currentTheme2] = { css: themeContent, fontSpecs: parseFontMeta(themeContent) };
       }
       if (!cachedHljsCSS) {
-        cachedHljsCSS = fs2.readFileSync(hljsCssPath, "utf-8");
-        cachedTexmathCSS = fs2.readFileSync(texmathCssPath, "utf-8");
+        cachedHljsCSS = fs3.readFileSync(hljsCssPath, "utf-8");
+        cachedTexmathCSS = fs3.readFileSync(texmathCssPath, "utf-8");
       }
-      const { css: themeCSS, fontSpecs } = themeCache[currentTheme];
+      const { css: themeCSS, fontSpecs } = themeCache[currentTheme2];
       return { themeCSS, fontSpecs, hljsCSS: cachedHljsCSS, texmathCSS: cachedTexmathCSS };
     }
     async function prepareFonts() {
       const { fontSpecs } = loadCSS();
-      await ensureFonts(fontSpecs, currentTheme);
+      await ensureFonts(fontSpecs, currentTheme2);
     }
     function renderBodyHtmlFromString2(content) {
-      content = content.replace(/^==page==$/gm, '\n<div class="page-break"></div>\n');
-      content = preprocessTOC(content);
+      content = replaceOutsideCodeBlocks(content, (text) => {
+        text = text.replace(/^==page==$/gm, '\n<div class="page-break"></div>\n');
+        text = preprocessTOC(text);
+        return text;
+      });
       let html = md.render(content);
       html = processTOC(html);
       return html;
     }
     function renderBodyHtml2(markdownFilePath) {
-      const content = fs2.readFileSync(markdownFilePath, "utf-8");
+      const content = fs3.readFileSync(markdownFilePath, "utf-8");
       return renderBodyHtmlFromString2(content);
     }
     function renderToHtml(markdownFilePath, options = {}) {
-      let markdownContent = fs2.readFileSync(markdownFilePath, "utf-8");
-      markdownContent = markdownContent.replace(/^==page==$/gm, '\n\n<div class="page-break"></div>\n\n');
-      markdownContent = preprocessTOC(markdownContent);
+      let markdownContent = fs3.readFileSync(markdownFilePath, "utf-8");
+      markdownContent = replaceOutsideCodeBlocks(markdownContent, (text) => {
+        text = text.replace(/^==page==$/gm, '\n\n<div class="page-break"></div>\n\n');
+        text = preprocessTOC(text);
+        return text;
+      });
       const { themeCSS, fontSpecs, hljsCSS, texmathCSS } = loadCSS();
       const fontFaceCSS = generateFontFaceCSS(fontSpecs);
       let bodyHtml = md.render(markdownContent);
@@ -72786,10 +72833,11 @@ ${titleHtml}`;
 var require_typst_renderer = __commonJS({
   "../src/typst-renderer.js"(exports2, module2) {
     "use strict";
-    var fs2 = require("fs");
+    var fs3 = require("fs");
     var MarkdownIt = require_index_cjs4();
     var anchor = require_markdownItAnchor();
     var container = require_index_cjs5();
+    var { replaceOutsideCodeBlocks } = require_preprocess();
     var PAGEBREAK_MARKER = "MDFPBMARKER";
     var TOC_MARKER = "MDFTOCMARKER";
     var md = new MarkdownIt({ html: true, breaks: true }).use(anchor, {
@@ -72819,7 +72867,7 @@ var require_typst_renderer = __commonJS({
         });
       }
     }
-    var ALIGNMENTS = ["center", "right"];
+    var ALIGNMENTS = ["center", "right", "left"];
     for (const align of ALIGNMENTS) {
       md.use(container, align, {
         render(tokens, idx) {
@@ -72918,14 +72966,17 @@ var require_typst_renderer = __commonJS({
     r.th_open = r.td_open = () => "  [";
     r.th_close = r.td_close = () => "],\n";
     function renderToTypst(mdPath) {
-      return renderToTypstFromString(fs2.readFileSync(mdPath, "utf-8"));
+      return renderToTypstFromString(fs3.readFileSync(mdPath, "utf-8"));
     }
     function renderToTypstFromString(content) {
       _listStack = [];
       content = content.replace(/^(\s*)-\s+\[ \]/gm, "$1- \u2610");
       content = content.replace(/^(\s*)-\s+\[x\]/gim, "$1- \u2611");
-      content = content.replace(/^==page==$/gm, "\n" + PAGEBREAK_MARKER + "\n");
-      content = content.replace(/^\[TOC\]$/gim, "\n" + TOC_MARKER + "\n");
+      content = replaceOutsideCodeBlocks(content, (text) => {
+        text = text.replace(/^==page==$/gm, "\n" + PAGEBREAK_MARKER + "\n");
+        text = text.replace(/^\[TOC\]$/gim, "\n" + TOC_MARKER + "\n");
+        return text;
+      });
       return md.render(content);
     }
     module2.exports = { renderToTypst, renderToTypstFromString };
@@ -73091,9 +73142,24 @@ var path3 = __toESM(require("path"));
 // src/htmlPreview.ts
 var vscode = __toESM(require("vscode"));
 var path = __toESM(require("path"));
+var fs = __toESM(require("fs"));
 var { renderBodyHtmlFromString } = require_renderer();
 function renderBodyHtml(content) {
   return renderBodyHtmlFromString(content);
+}
+function buildGoogleFontsUrl(themeCss) {
+  const match = themeCss.match(/\/\*\s*@mdf-fonts:\s*([^*]+?)\s*\*\//);
+  if (!match) return null;
+  const families = match[1].trim().split(";").map((s) => s.trim()).filter(Boolean);
+  const params = families.map((spec) => {
+    const colonIdx = spec.lastIndexOf(":");
+    if (colonIdx === -1) return null;
+    const family = spec.slice(0, colonIdx).trim().replace(/ /g, "+");
+    const weights = spec.slice(colonIdx + 1).split(",").map((w) => w.trim()).filter(Boolean);
+    return `family=${family}:wght@${weights.join(";")}`;
+  }).filter(Boolean);
+  if (params.length === 0) return null;
+  return `https://fonts.googleapis.com/css2?${params.join("&")}&display=swap`;
 }
 function getNonce() {
   let text = "";
@@ -73103,20 +73169,26 @@ function getNonce() {
   }
   return text;
 }
-function buildWebviewHtml(panel, context, bodyHtml) {
+var AVAILABLE_THEMES = ["default", "asterisk"];
+function buildWebviewHtml(panel, context, bodyHtml, theme = "default") {
   const webview = panel.webview;
   const assetsDir = path.join(context.extensionPath, "out", "assets");
   const toAssetUri = (filename) => webview.asWebviewUri(vscode.Uri.file(path.join(assetsDir, filename)));
   const katexCssUri = toAssetUri("katex.min.css");
   const hljsCssUri = toAssetUri("github-dark.css");
   const texmathCssUri = toAssetUri("texmath.css");
-  const themeCssUri = toAssetUri("default.css");
+  const themeCssUri = toAssetUri(`${theme}.css`);
   const previewCssUri = webview.asWebviewUri(
     vscode.Uri.file(path.join(context.extensionPath, "media", "preview.css"))
   );
   const scriptUri = webview.asWebviewUri(
     vscode.Uri.file(path.join(context.extensionPath, "media", "html-preview.js"))
   );
+  const themeCssPath = path.join(assetsDir, `${theme}.css`);
+  const themeCssContent = fs.existsSync(themeCssPath) ? fs.readFileSync(themeCssPath, "utf-8") : "";
+  const fontsUrl = buildGoogleFontsUrl(themeCssContent);
+  const fontsLink = fontsUrl ? `<link href="${fontsUrl}" rel="stylesheet">` : "";
+  const themeOptions = AVAILABLE_THEMES.map((t) => `<option value="${t}"${t === theme ? " selected" : ""}>${t}</option>`).join("");
   const nonce = getNonce();
   const csp = [
     `default-src 'none'`,
@@ -73138,9 +73210,12 @@ function buildWebviewHtml(panel, context, bodyHtml) {
   <link rel="stylesheet" href="${previewCssUri}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+  ${fontsLink}
 </head>
 <body>
+  <div id="mdf-toolbar">
+    <select id="mdf-theme-select">${themeOptions}</select>
+  </div>
   <div id="mdf-content">${bodyHtml}</div>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
@@ -73150,24 +73225,24 @@ function buildWebviewHtml(panel, context, bodyHtml) {
 // src/typstPreview.ts
 var vscode2 = __toESM(require("vscode"));
 var path2 = __toESM(require("path"));
-var fs = __toESM(require("fs"));
+var fs2 = __toESM(require("fs"));
 var typstRenderer = require_typst_renderer();
 function getTemplate(extensionPath) {
   const templatePath = path2.join(extensionPath, "out", "assets", "default.typ");
-  return fs.readFileSync(templatePath, "utf-8");
+  return fs2.readFileSync(templatePath, "utf-8");
 }
 var installDirCache;
 async function ensureCompiler(context) {
   const installDir = path2.join(context.globalStorageUri.fsPath, "typst-compiler");
   installDirCache = installDir;
   const modulePath = path2.join(installDir, "node_modules", "@myriaddreamin", "typst-ts-node-compiler");
-  if (fs.existsSync(modulePath)) {
+  if (fs2.existsSync(modulePath)) {
     return;
   }
-  fs.mkdirSync(installDir, { recursive: true });
+  fs2.mkdirSync(installDir, { recursive: true });
   const pkgJsonPath = path2.join(installDir, "package.json");
-  if (!fs.existsSync(pkgJsonPath)) {
-    fs.writeFileSync(pkgJsonPath, JSON.stringify({ name: "typst-compiler-install", private: true }, null, 2));
+  if (!fs2.existsSync(pkgJsonPath)) {
+    fs2.writeFileSync(pkgJsonPath, JSON.stringify({ name: "typst-compiler-install", private: true }, null, 2));
   }
   await vscode2.window.withProgress(
     {
@@ -73180,7 +73255,7 @@ async function ensureCompiler(context) {
       const home = process.env.HOME || process.env.USERPROFILE || "";
       const nvmDir = process.env.NVM_DIR || path2.join(home, ".nvm");
       const nvmSh = path2.join(nvmDir, "nvm.sh");
-      const useNvm = fs.existsSync(nvmSh);
+      const useNvm = fs2.existsSync(nvmSh);
       const cmd = useNvm ? `. "${nvmSh}" && npm install @myriaddreamin/typst-ts-node-compiler` : "npm install @myriaddreamin/typst-ts-node-compiler";
       execSync(cmd, {
         cwd: installDir,
@@ -73267,6 +73342,9 @@ function escapeHtml(s) {
 function currentMode() {
   return vscode3.workspace.getConfiguration("mdf").get("mode", "html");
 }
+function currentTheme() {
+  return vscode3.workspace.getConfiguration("mdf").get("theme", "default");
+}
 function rewriteImageSrcs(html, webview, docDir) {
   return html.replace(
     /(<img\s[^>]*?\bsrc\s*=\s*)(["'])(.*?)\2/gi,
@@ -73278,7 +73356,7 @@ function rewriteImageSrcs(html, webview, docDir) {
     }
   );
 }
-async function setWebviewContent(panel, context, document2, mode) {
+async function setWebviewContent(panel, context, document2, mode, theme) {
   const content = document2.getText();
   const workspace3 = path3.dirname(document2.uri.fsPath);
   try {
@@ -73287,7 +73365,7 @@ async function setWebviewContent(panel, context, document2, mode) {
       panel.webview.html = buildTypstWebviewHtml(panel, context, svgContent);
     } else {
       const bodyHtml = rewriteImageSrcs(renderBodyHtml(content), panel.webview, workspace3);
-      panel.webview.html = buildWebviewHtml(panel, context, bodyHtml);
+      panel.webview.html = buildWebviewHtml(panel, context, bodyHtml, theme);
     }
   } catch (err) {
     panel.webview.html = errorHtml(String(err));
@@ -73323,6 +73401,7 @@ function openOrRevealPreview(context, document2) {
     return;
   }
   const mode = currentMode();
+  const theme = currentTheme();
   const panel = vscode3.window.createWebviewPanel(
     "mdfPreview",
     `Preview: ${path3.basename(document2.fileName)}`,
@@ -73338,9 +73417,9 @@ function openOrRevealPreview(context, document2) {
       retainContextWhenHidden: true
     }
   );
-  const entry = { panel, document: document2, mode };
+  const entry = { panel, document: document2, mode, theme };
   panels.set(docUri, entry);
-  setWebviewContent(panel, context, document2, mode);
+  setWebviewContent(panel, context, document2, mode, theme);
   const changeDisposable = vscode3.workspace.onDidChangeTextDocument((e) => {
     if (e.document.uri.toString() !== docUri) return;
     const ent = panels.get(docUri);
@@ -73348,16 +73427,23 @@ function openOrRevealPreview(context, document2) {
     postUpdate(ent.panel, context, e.document, ent.mode);
   });
   const configDisposable = vscode3.workspace.onDidChangeConfiguration((e) => {
-    if (!e.affectsConfiguration("mdf.mode")) return;
+    if (!e.affectsConfiguration("mdf.mode") && !e.affectsConfiguration("mdf.theme")) return;
     const ent = panels.get(docUri);
     if (!ent) return;
     ent.mode = currentMode();
-    setWebviewContent(ent.panel, context, ent.document, ent.mode);
+    ent.theme = currentTheme();
+    setWebviewContent(ent.panel, context, ent.document, ent.mode, ent.theme);
+  });
+  const messageDisposable = panel.webview.onDidReceiveMessage((msg) => {
+    if (msg.type === "switchTheme") {
+      vscode3.workspace.getConfiguration("mdf").update("theme", msg.theme, vscode3.ConfigurationTarget.Global);
+    }
   });
   panel.onDidDispose(() => {
     panels.delete(docUri);
     changeDisposable.dispose();
     configDisposable.dispose();
+    messageDisposable.dispose();
   });
 }
 function disposeAll() {
@@ -73443,9 +73529,14 @@ function activate(context) {
         { location: vscode4.ProgressLocation.Notification, title: "mdf: Exporting PDF\u2026" },
         async () => {
           try {
+            const theme = vscode4.workspace.getConfiguration("mdf").get("theme", "default");
+            const cliArgs = [doc.uri.fsPath, outputUri.fsPath];
+            if (theme !== "default") {
+              cliArgs.push("--theme", theme);
+            }
             await new Promise((resolve2, reject) => {
               const { execFile } = require("child_process");
-              execFile("mdf", [doc.uri.fsPath, outputUri.fsPath], (err) => {
+              execFile("mdf", cliArgs, (err) => {
                 if (err) reject(new Error("mdf CLI not found. Install it: npm install -g @kobekeye/mdf"));
                 else resolve2();
               });

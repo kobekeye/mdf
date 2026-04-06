@@ -7,6 +7,7 @@ interface PanelEntry {
   panel: vscode.WebviewPanel;
   document: vscode.TextDocument;
   mode: string;
+  theme: string;
 }
 
 // One panel per document URI
@@ -18,6 +19,10 @@ function escapeHtml(s: string): string {
 
 function currentMode(): string {
   return vscode.workspace.getConfiguration('mdf').get<string>('mode', 'html');
+}
+
+function currentTheme(): string {
+  return vscode.workspace.getConfiguration('mdf').get<string>('theme', 'default');
 }
 
 /** Rewrite relative image src attributes in HTML to webview URIs. */
@@ -44,6 +49,7 @@ async function setWebviewContent(
   context: vscode.ExtensionContext,
   document: vscode.TextDocument,
   mode: string,
+  theme: string,
 ): Promise<void> {
   const content = document.getText();
   const workspace = path.dirname(document.uri.fsPath);
@@ -54,7 +60,7 @@ async function setWebviewContent(
       panel.webview.html = buildTypstWebviewHtml(panel, context, svgContent);
     } else {
       const bodyHtml = rewriteImageSrcs(renderBodyHtml(content), panel.webview, workspace);
-      panel.webview.html = buildWebviewHtml(panel, context, bodyHtml);
+      panel.webview.html = buildWebviewHtml(panel, context, bodyHtml, theme);
     }
   } catch (err) {
     panel.webview.html = errorHtml(String(err));
@@ -106,6 +112,7 @@ export function openOrRevealPreview(
   }
 
   const mode = currentMode();
+  const theme = currentTheme();
 
   const panel = vscode.window.createWebviewPanel(
     'mdfPreview',
@@ -123,11 +130,11 @@ export function openOrRevealPreview(
     },
   );
 
-  const entry: PanelEntry = { panel, document, mode };
+  const entry: PanelEntry = { panel, document, mode, theme };
   panels.set(docUri, entry);
 
   // Initial render (async)
-  setWebviewContent(panel, context, document, mode);
+  setWebviewContent(panel, context, document, mode, theme);
 
   // Live update on every keystroke
   const changeDisposable = vscode.workspace.onDidChangeTextDocument((e) => {
@@ -137,19 +144,29 @@ export function openOrRevealPreview(
     postUpdate(ent.panel, context, e.document, ent.mode);
   });
 
-  // Mode switch: fully reload webview HTML for the new mode
+  // Mode/theme switch: fully reload webview HTML
   const configDisposable = vscode.workspace.onDidChangeConfiguration((e) => {
-    if (!e.affectsConfiguration('mdf.mode')) return;
+    if (!e.affectsConfiguration('mdf.mode') && !e.affectsConfiguration('mdf.theme')) return;
     const ent = panels.get(docUri);
     if (!ent) return;
     ent.mode = currentMode();
-    setWebviewContent(ent.panel, context, ent.document, ent.mode);
+    ent.theme = currentTheme();
+    setWebviewContent(ent.panel, context, ent.document, ent.mode, ent.theme);
+  });
+
+  // Handle messages from webview (theme selector)
+  const messageDisposable = panel.webview.onDidReceiveMessage((msg) => {
+    if (msg.type === 'switchTheme') {
+      // Persist to VS Code settings — triggers configDisposable for all panels
+      vscode.workspace.getConfiguration('mdf').update('theme', msg.theme, vscode.ConfigurationTarget.Global);
+    }
   });
 
   panel.onDidDispose(() => {
     panels.delete(docUri);
     changeDisposable.dispose();
     configDisposable.dispose();
+    messageDisposable.dispose();
   });
 }
 

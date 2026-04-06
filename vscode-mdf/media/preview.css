@@ -8,7 +8,9 @@ body {
   background: #f0f2f5;
   padding: 32px 24px;
   min-height: 100vh;
-  /* font/color/max-width are set by default.css via #mdf-content */
+  /* Reset theme CSS body constraints — we apply them on #mdf-content instead */
+  max-width: none;
+  margin: 0;
 }
 
 #mdf-content {
@@ -18,14 +20,68 @@ body {
   padding: 48px 56px;
   border-radius: 4px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.10);
-  /* Override body styles from default.css since we wrap in a div */
-  font-family: 'Inter', 'Noto Sans TC', sans-serif;
-  font-size: 15px;
-  line-height: 1.75;
-  color: #1a1a2e;
+  /* font-family, font-size, line-height, color inherit from theme CSS body */
 }
 
-/* Reset the body-level max-width/margin from default.css since we apply them on #mdf-content */
+/* Reset the body-level max-width/margin from theme CSS since we apply them on #mdf-content */
 #mdf-content > * {
   max-width: none;
+}
+
+/* ── Theme selector toolbar ───────────────────────────────── */
+#mdf-toolbar {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#mdf-theme-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  padding: 4px 24px 4px 10px;
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #333;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+#mdf-theme-select:hover {
+  border-color: #999;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+}
+
+#mdf-theme-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+/* ── Zoom indicator ──────────────────────────────────────── */
+#mdf-zoom-indicator {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  padding: 4px 12px;
+  border-radius: 6px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
 }

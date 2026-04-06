@@ -4,6 +4,7 @@ const fs   = require('fs');
 const MarkdownIt  = require('markdown-it');
 const anchor      = require('markdown-it-anchor');
 const container   = require('markdown-it-container');
+const { replaceOutsideCodeBlocks } = require('./preprocess');
 
 // Unique markers that won't appear in normal markdown
 const PAGEBREAK_MARKER = 'MDFPBMARKER';
@@ -41,8 +42,8 @@ for (const { names, typstType } of CALLOUT_NAMES) {
     }
 }
 
-// --- Alignment containers: :::center, :::right ---
-const ALIGNMENTS = ['center', 'right'];
+// --- Alignment containers: :::center, :::right :::left ---
+const ALIGNMENTS = ['center', 'right', 'left'];
 for (const align of ALIGNMENTS) {
     md.use(container, align, {
         render(tokens, idx) {
@@ -193,8 +194,11 @@ function renderToTypstFromString(content) {
 
     // Page break and TOC markers — ensure blank lines around them so
     // markdown-it doesn't absorb them into a preceding table / list.
-    content = content.replace(/^==page==$/gm,  '\n' + PAGEBREAK_MARKER + '\n');
-    content = content.replace(/^\[TOC\]$/gim,  '\n' + TOC_MARKER + '\n');
+    content = replaceOutsideCodeBlocks(content, (text) => {
+        text = text.replace(/^==page==$/gm,  '\n' + PAGEBREAK_MARKER + '\n');
+        text = text.replace(/^\[TOC\]$/gim,  '\n' + TOC_MARKER + '\n');
+        return text;
+    });
 
     return md.render(content);
 }

@@ -147,9 +147,14 @@ export function activate(context: vscode.ExtensionContext): void {
             // }
 
             // HTML mode only (Typst temporarily disabled)
+            const theme = vscode.workspace.getConfiguration('mdf').get<string>('theme', 'default');
+            const cliArgs = [doc.uri.fsPath, outputUri.fsPath];
+            if (theme !== 'default') {
+              cliArgs.push('--theme', theme);
+            }
             await new Promise<void>((resolve, reject) => {
               const { execFile } = require('child_process') as typeof import('child_process');
-              execFile('mdf', [doc.uri.fsPath, outputUri.fsPath], (err) => {
+              execFile('mdf', cliArgs, (err) => {
                 if (err) reject(new Error('mdf CLI not found. Install it: npm install -g @kobekeye/mdf'));
                 else resolve();
               });
