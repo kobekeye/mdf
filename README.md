@@ -1,8 +1,10 @@
 # mdf
 📢 **v1.2.0** — VSCode extension with preview, new themes.
 
-<img width="370" height="527" alt="mdfintro1" src="https://github.com/user-attachments/assets/30436af4-2f05-4678-ad80-64daa47a5f7c" />
-<img width="372" height="527" alt="mdfintro2" src="https://github.com/user-attachments/assets/79bab5be-2ea6-430c-8075-42870caa41bc" />
+<img width="371" height="527" alt="default1" src="https://github.com/user-attachments/assets/e42d7753-5ea4-4af0-bf71-524f22d61fc6" />
+<img width="371" height="527" alt="default2" src="https://github.com/user-attachments/assets/a6398353-5e38-4515-9e36-12cc5477637b" />
+<img width="371" height="527" alt="asterisk1" src="https://github.com/user-attachments/assets/b80e8bdd-0062-4be1-8b11-4dd48d8bfda9" />
+<img width="371" height="527" alt="asterisk2" src="https://github.com/user-attachments/assets/8d9a76f1-21c0-4742-b037-48b8cdf8a06c" />
 
 
 
@@ -62,6 +64,15 @@ npx @kobekeye/mdf input.md output.pdf    # custom output name
 npx @kobekeye/mdf input.md -w            # outputs input.pdf and watches for changes
 npx @kobekeye/mdf input.md output.pdf -w # custom output name and watches for changes
 ```
+
+## VSCode Extension
+
+Install **mdf** from the VSCode marketplace for live preview and PDF export directly in the editor.
+
+- Live Markdown preview in side panel
+- Syntax highlighting for mdf-specific syntax (`:::callouts`, `==page==`, `[TOC]`)
+- LaTeX math snippets
+
 ## Update
 ```bash
 npm update -g @kobekeye/mdf
