@@ -12,3 +12,4 @@ package-lock.json
 Markdown-mark.svg
 publicity.txt
 vscode-mdf/
+*.vsix
