@@ -1,8 +1,8 @@
 {
   "name": "vscode-mdf",
-  "displayName": "mdf — Markdown to PDF",
+  "displayName": "mdf-vscode",
   "description": "Live preview, syntax highlighting and snippets for mdf Markdown",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "kobekeye",
   "license": "MIT",
   "repository": {
@@ -12,8 +12,13 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Other", "Formatters"],
-  "activationEvents": ["onLanguage:markdown"],
+  "categories": [
+    "Other",
+    "Formatters"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
   "main": "./out/extension.js",
   "configurationDefaults": {
     "[markdown]": {
@@ -30,7 +35,9 @@
       {
         "scopeName": "mdf.injection.markdown",
         "path": "./syntaxes/mdf-markdown.injection.tmLanguage.json",
-        "injectTo": ["text.html.markdown"]
+        "injectTo": [
+          "text.html.markdown"
+        ]
       }
     ],
     "snippets": [
@@ -69,7 +76,9 @@
       "properties": {
         "mdf.mode": {
           "type": "string",
-          "enum": ["html"],
+          "enum": [
+            "html"
+          ],
           "enumDescriptions": [
             "HTML pipeline: Markdown → HTML → PDF (KaTeX math)"
           ],
@@ -78,7 +87,10 @@
         },
         "mdf.theme": {
           "type": "string",
-          "enum": ["default", "asterisk"],
+          "enum": [
+            "default",
+            "asterisk"
+          ],
           "enumDescriptions": [
             "Default — Inter + Noto Sans TC, clean and modern",
             "Asterisk — Source Serif 4 + Noto Serif TC, warm and refined"
