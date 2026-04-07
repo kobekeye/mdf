@@ -1,0 +1,2 @@
+# Ensure snapshot files always use LF, even on Windows
+test/snapshots/** text eol=lf
