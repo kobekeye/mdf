@@ -1,5 +1,6 @@
 node_modules/
 .claude/
+.codex
 *.pdf
 .vscode/
 .mdf-temp-*.html
@@ -7,10 +8,9 @@ useless/
 *.md
 !test/**/*.md
 !README.md
-# build artifacts
 out/
+vscode-mdf/out/
 *.vsix
 
-# 個人草稿／暫存檔
 Markdown-mark.svg
 publicity.txt

@@ -6,3 +6,7 @@ build.js
 **/*.ts
 **/*.js.map
 .vscodeignore
+vendor/**
+test/**
+package-lock.json
+*.vsix
