@@ -8,6 +8,13 @@ const { renderBodyHtmlFromString } = require('../../src/renderer') as {
   renderBodyHtmlFromString: (md: string) => string;
 };
 
+const NONCE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+function getNonce(): string {
+  let text = '';
+  for (let i = 0; i < 32; i++) text += NONCE_CHARS.charAt(Math.floor(Math.random() * NONCE_CHARS.length));
+  return text;
+}
+
 export function renderBodyHtml(content: string): string {
   return renderBodyHtmlFromString(content);
 }
@@ -33,16 +40,21 @@ function buildGoogleFontsUrl(themeCss: string): string | null {
   return `https://fonts.googleapis.com/css2?${params.join('&')}&display=swap`;
 }
 
-function getNonce(): string {
-  let text = '';
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  for (let i = 0; i < 32; i++) {
-    text += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return text;
-}
-
 const AVAILABLE_THEMES = ['default', 'asterisk'];
+
+// Cache parsed Google Fonts URLs by theme CSS path. The theme files ship with
+// the extension and don't change at runtime, so reading once is enough.
+const fontsLinkCache = new Map<string, string>();
+
+function getFontsLink(themeCssPath: string): string {
+  const cached = fontsLinkCache.get(themeCssPath);
+  if (cached !== undefined) return cached;
+  const themeCss = fs.existsSync(themeCssPath) ? fs.readFileSync(themeCssPath, 'utf-8') : '';
+  const url = buildGoogleFontsUrl(themeCss);
+  const link = url ? `<link href="${url}" rel="stylesheet">` : '';
+  fontsLinkCache.set(themeCssPath, link);
+  return link;
+}
 
 export function buildWebviewHtml(
   panel: vscode.WebviewPanel,
@@ -68,13 +80,7 @@ export function buildWebviewHtml(
     vscode.Uri.file(path.join(context.extensionPath, 'media', 'html-preview.js')),
   );
 
-  // Parse @mdf-fonts from theme CSS to build the correct Google Fonts link
-  const themeCssPath = path.join(assetsDir, `${theme}.css`);
-  const themeCssContent = fs.existsSync(themeCssPath) ? fs.readFileSync(themeCssPath, 'utf-8') : '';
-  const fontsUrl = buildGoogleFontsUrl(themeCssContent);
-  const fontsLink = fontsUrl
-    ? `<link href="${fontsUrl}" rel="stylesheet">`
-    : '';
+  const fontsLink = getFontsLink(path.join(assetsDir, `${theme}.css`));
 
   // Build theme options for the selector
   const themeOptions = AVAILABLE_THEMES
