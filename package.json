@@ -6,6 +6,12 @@
   "bin": {
     "mdf": "src/cli.js"
   },
+  "files": [
+    "src/",
+    "themes/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "node test/run.js"
   },
