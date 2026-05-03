@@ -113,12 +113,13 @@ if (args.includes('-v') || args.includes('--version')) {
 
 function printHelp() {
     console.log(`
-usage: mdf <input.md> [output.pdf] [-w|--watch] [--theme <name>]
+usage: mdf <input.md> [output.pdf] [-w|--watch] [--typ] [--theme <name>]
 
   input.md        required, the Markdown file to convert
   output.pdf      optional, the output PDF file name
                   (if omitted, it will automatically use the same name, e.g. input.pdf)
   -w, --watch     watch for changes and re-convert automatically
+  --typ           use Typst pipeline (faster, no browser needed)
   --theme <name>  use a custom theme (default: default)
                   available: default, asterisk
   -h, --help      show this help message
@@ -127,6 +128,8 @@ usage: mdf <input.md> [output.pdf] [-w|--watch] [--theme <name>]
 examples:
   mdf README.md
   mdf doc.md custom-name.pdf
+  mdf doc.md --typ
+  mdf doc.md -w --typ
   mdf doc.md --theme asterisk
     `);
     process.exit(0);
@@ -139,10 +142,6 @@ if (args.length === 0 || args.includes('-h') || args.includes('--help')) {
 const watchMode = args.includes('--watch') || args.includes('-w');
 const typstMode = args.includes('--typ');
 
-if (typstMode) {
-    console.log('\x1b[33mTypst pipeline is coming soon! Stay tuned.\x1b[0m');
-    process.exit(0);
-}
 
 // parse --theme option
 const themeIdx = args.indexOf('--theme');
@@ -162,6 +161,33 @@ if (!fs.existsSync(inputFile)) {
 
 const typTemplatePath = path.join(__dirname, '..', 'themes', 'default.typ');
 
+// Thrown when typst compile fails. `diagnostics` is an array of { message, path, range, severity }
+// from NodeCompiler.fetchDiagnostics()/shortDiagnostics. The .message is already formatted for display.
+class TypstCompileError extends Error {
+    constructor(diagnostics) {
+        const body = diagnostics.map(formatTypstDiagnostic).join('\n');
+        super('Typst compile failed:\n' + body);
+        this.name = 'TypstCompileError';
+        this.diagnostics = diagnostics;
+    }
+}
+
+function formatTypstDiagnostic(d) {
+    const sev = d.severity === 1 ? 'error' : 'warning';
+    const file = d.path ? path.basename(d.path) : '<main>';
+    const range = d.range ? ':' + JSON.stringify(d.range) : '';
+    return `  [${sev}] ${file}${range}\n      ${String(d.message).replace(/\n/g, '\n      ')}`;
+}
+
+function extractDiagnostics(compiler, rawDiag) {
+    // Prefer fetchDiagnostics (full) then fall back to shortDiagnostics.
+    try {
+        const full = compiler.fetchDiagnostics(rawDiag);
+        if (Array.isArray(full) && full.length > 0) return full;
+    } catch (_) { /* fall through */ }
+    return (rawDiag && rawDiag.shortDiagnostics) || [];
+}
+
 async function convertToTypstPdf() {
     console.log(`converting: ${inputFile} → ${outputFile}`);
 
@@ -179,9 +205,34 @@ async function convertToTypstPdf() {
         workspace: inputDir,
         fontArgs: [{ fontPaths: [getFontCacheDir()] }],
     });
-    const pdfBuffer = $typst.pdf({ mainFileContent: fullTypst });
+
+    // Two-phase API: compile() → hasError() → pdf(doc). The one-step pdf()
+    // throws a useless Error with an empty message on compile errors, so we
+    // go through compile() to get structured diagnostics.
+    const result = $typst.compile({ mainFileContent: fullTypst });
+    if (result.hasError()) {
+        throw new TypstCompileError(extractDiagnostics($typst, result.takeDiagnostics()));
+    }
+    const doc = result.result;
+    if (!doc) {
+        throw new TypstCompileError([{ message: 'compile() returned no document', path: '', range: null, severity: 1 }]);
+    }
+    const pdfBuffer = $typst.pdf(doc);
     fs.writeFileSync(path.resolve(outputFile), pdfBuffer);
     console.log(`\x1b[32mDone! Output to: ${path.resolve(outputFile)}\x1b[0m`);
+}
+
+// Print any error with as much detail as possible. The typst-ts-node-compiler
+// sometimes throws plain Error objects with an empty `message`, so fall back
+// through stack → name → inspect → String(err).
+function printError(err) {
+    if (err instanceof TypstCompileError) {
+        console.error('\x1b[31m' + err.message + '\x1b[0m');
+        return;
+    }
+    const util = require('util');
+    const detail = err && (err.stack || err.message) ? (err.stack || err.message) : util.inspect(err, { depth: 3 });
+    console.error('\x1b[31mError: ' + detail + '\x1b[0m');
 }
 
 async function convertToPdf(browser) {
@@ -230,7 +281,7 @@ async function main() {
         try {
             await convertToTypstPdf();
         } catch (err) {
-            console.error(`\x1b[31mError: ${err.message}\x1b[0m`);
+            printError(err);
             process.exit(1);
         }
 
@@ -244,7 +295,7 @@ async function main() {
                     try {
                         await convertToTypstPdf();
                     } catch (err) {
-                        console.error(`\x1b[31mError: ${err.message}\x1b[0m`);
+                        printError(err);
                     }
                 }, 300);
             });
@@ -275,7 +326,7 @@ async function main() {
                     try {
                         await convertToPdf(browser);
                     } catch (err) {
-                        console.error(`\x1b[31mError: ${err.message}\x1b[0m`);
+                        printError(err);
                     }
                 }, 300);
             });
@@ -285,7 +336,7 @@ async function main() {
         }
     } catch (err) {
         await browser.close();
-        console.error(`\x1b[31mError: ${err.message}\x1b[0m`);
+        printError(err);
         process.exit(1);
     }
 }
