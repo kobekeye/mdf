@@ -59,7 +59,11 @@
       },
       {
         "command": "mdf.switchMode",
-        "title": "MDF: Switch Mode (Coming Soon)"
+        "title": "MDF: Switch Mode"
+      },
+      {
+        "command": "mdf.showOutput",
+        "title": "MDF: Show Output"
       }
     ],
     "menus": {
@@ -77,10 +81,12 @@
         "mdf.mode": {
           "type": "string",
           "enum": [
-            "html"
+            "html",
+            "typst"
           ],
           "enumDescriptions": [
-            "HTML pipeline: Markdown → HTML → PDF (KaTeX math)"
+            "HTML pipeline: Markdown → HTML preview (KaTeX math)",
+            "Typst pipeline: Markdown → Typst → SVG preview (fast, incremental)"
           ],
           "default": "html",
           "description": "mdf 模式：影響 math snippets、preview 行為和 PDF 輸出 pipeline"
@@ -102,14 +108,23 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "node build.js",
-    "compile": "node build.js",
-    "watch": "node build.js --watch"
+    "vscode:prepublish": "npm run typecheck && node build.js",
+    "compile": "npm run typecheck && node build.js",
+    "watch": "node build.js --watch",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "npm run compile && node test/preview-smoke.js && node test/webview-smoke.js",
+    "test:webview": "node test/webview-smoke.js"
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0",
     "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
     "esbuild": "^0.25.0",
+    "jsdom": "^29.0.2",
     "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "@myriaddreamin/typst-ts-renderer": "^0.7.0-rc2",
+    "@myriaddreamin/typst-ts-web-compiler": "^0.7.0-rc2",
+    "@myriaddreamin/typst.ts": "^0.7.0-rc2"
   }
 }

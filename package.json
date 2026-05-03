@@ -19,9 +19,14 @@
   ],
   "author": "kobekeye",
   "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
   "type": "commonjs",
   "devDependencies": {
-    "@myriaddreamin/typst-ts-node-compiler": "^0.7.0-rc2"
+    "@myriaddreamin/typst-ts-node-compiler": "0.7.0-rc2",
+    "@myriaddreamin/typst-ts-renderer": "0.7.0-rc2",
+    "@myriaddreamin/typst.ts": "0.7.0-rc2"
   },
   "dependencies": {
     "chokidar": "^5.0.0",
@@ -30,6 +35,7 @@
     "markdown-it": "^14.1.1",
     "markdown-it-anchor": "^9.2.0",
     "markdown-it-container": "^4.0.0",
+    "markdown-it-github-alerts": "^1.0.1",
     "markdown-it-task-lists": "^2.1.1",
     "markdown-it-texmath": "^1.0.0",
     "puppeteer-core": "^24.40.0"
