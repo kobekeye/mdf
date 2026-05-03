@@ -129,11 +129,9 @@ pre code {
 /* blockquotes */
 blockquote {
     margin: 1.2em 0;
-    padding: 12px 20px;
-    border-left: 4px solid #3b82f6;
-    background: #f0f6ff;
-    border-radius: 0 4px 4px 0;
-    color: #334155;
+    padding: 0 0 0 16px;
+    border-left: 3px solid #d1d9e0;
+    color: #656d76;
 }
 
 blockquote p {
@@ -391,4 +389,84 @@ figure {
     margin-bottom: 0.6em;
     padding-bottom: 0.4em;
     border-bottom: 1px solid #e2e8f0;
+}
+
+/* ===== GitHub-style alerts (> [!NOTE], > [!TIP], etc.) ===== */
+.gh-alert {
+    margin: 1.2em 0;
+    padding: 14px 20px;
+    border-left: 4px solid;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.95em;
+    line-height: 1.7;
+    break-inside: avoid;
+}
+
+.gh-alert p {
+    margin: 0 0 0.5em;
+}
+
+.gh-alert p:last-child {
+    margin-bottom: 0;
+}
+
+.gh-alert-title {
+    font-weight: 700;
+    margin: 0 0 0.4em !important;
+    font-size: 1em;
+}
+
+/* note – blue */
+.gh-alert-note {
+    border-left-color: #3b82f6;
+    background: #eff6ff;
+    color: #1e3a5f;
+}
+
+.gh-alert-note .gh-alert-title {
+    color: #2563eb;
+}
+
+/* tip – green */
+.gh-alert-tip {
+    border-left-color: #22c55e;
+    /* background: #ffffff; */
+    color: #14532d;
+}
+
+.gh-alert-tip .gh-alert-title {
+    color: #16a34a;
+}
+
+/* important – purple */
+.gh-alert-important {
+    border-left-color: #8b5cf6;
+    /* background: #f5f3ff; */
+    color: #3b0764;
+}
+
+.gh-alert-important .gh-alert-title {
+    color: #7c3aed;
+}
+
+/* warning – amber */
+.gh-alert-warning {
+    border-left-color: #f59e0b;
+    /* background: #fffbeb; */
+    color: #78350f;
+}
+
+.gh-alert-warning .gh-alert-title {
+    color: #d97706;
+}
+
+/* caution – red */
+.gh-alert-caution {
+    border-left-color: #ef4444;
+    /* background: #fef2f2; */
+    color: #7f1d1d;
+}
+
+.gh-alert-caution .gh-alert-title {
+    color: #dc2626;
 }
