@@ -1,11 +1,14 @@
-#outline()
+#outline(title: none)
 
 = Heading 1
 
+#v(-1.4em)
 == Heading 2
 
+#v(-1.4em)
 === Heading 3
 
+#v(-1.4em)
 ==== Heading 4
 
 A paragraph with *bold*, _italic_, and `inline code`.
@@ -16,23 +19,11 @@ Another paragraph with #link("https://example.com")[a link] in it.
 
 == Code Blocks
 
-```javascript
-function hello() {
-    console.log("world");
-}
-```
+#mdf-code-block(lang: "javascript")[#mdf-code-token("keyword")[#text("function")]#text(" ")#mdf-code-token("title")[#text("hello")]#text("(")#text(") {")#linebreak()#text("    ")#mdf-code-token("keyword")[#text("console")]#text(".")#mdf-code-token("title")[#text("log")]#text("(")#mdf-code-token("string")[#text("\"world\"")]#text(");")#linebreak()#text("}")#linebreak()]
 
-```python
-def fibonacci(n):
-    if n <= 1:
-        return n
-    return fibonacci(n - 1) + fibonacci(n - 2)
-```
+#mdf-code-block(lang: "python")[#mdf-code-token("keyword")[#text("def")]#text(" ")#mdf-code-token("title")[#text("fibonacci")]#text("(")#text("n")#text("):")#linebreak()#text("    ")#mdf-code-token("keyword")[#text("if")]#text(" n <= ")#mdf-code-token("constant")[#text("1")]#text(":")#linebreak()#text("        ")#mdf-code-token("keyword")[#text("return")]#text(" n")#linebreak()#text("    ")#mdf-code-token("keyword")[#text("return")]#text(" fibonacci(n - ")#mdf-code-token("constant")[#text("1")]#text(") + fibonacci(n - ")#mdf-code-token("constant")[#text("2")]#text(")")#linebreak()]
 
-```
-indented code block line 1
-indented code block line 2
-```
+#mdf-code-block(lang: none)[#text("indented code block line 1")#linebreak()#text("indented code block line 2")#linebreak()]
 
 == Math
 
@@ -119,6 +110,33 @@ Blue is an alias for info.
 
 #spoiler([Click to reveal])[
 This is hidden content inside a spoiler.
+
+]
+
+== GitHub Alerts
+
+#gh-alert("note")[
+This is a note alert.
+
+]
+
+#gh-alert("tip")[
+This is a tip alert.
+
+]
+
+#gh-alert("important")[
+This is an important alert.
+
+]
+
+#gh-alert("warning")[
+This is a warning alert.
+
+]
+
+#gh-alert("caution")[
+This is a caution alert.
 
 ]
 

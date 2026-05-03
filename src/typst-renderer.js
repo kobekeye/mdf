@@ -4,18 +4,177 @@ const fs   = require('fs');
 const MarkdownIt  = require('markdown-it');
 const anchor      = require('markdown-it-anchor');
 const container   = require('markdown-it-container');
+const { default: githubAlerts } = require('markdown-it-github-alerts');
+const hljs = require('highlight.js');
 const { replaceOutsideCodeBlocks } = require('./preprocess');
 
 // Unique markers that won't appear in normal markdown
 const PAGEBREAK_MARKER = 'MDFPBMARKER';
 const TOC_MARKER       = 'MDFTOCMARKER';
 
+function escapeTypstString(value) {
+    return String(value)
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"');
+}
+
+function decodeHtmlEntities(value) {
+    return String(value)
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, '\'')
+        .replace(/&#x27;/g, '\'')
+        .replace(/&amp;/g, '&');
+}
+
+function textToTypst(text) {
+    let out = '';
+    let buffer = '';
+
+    const flush = () => {
+        if (buffer.length > 0) {
+            out += `#text("${escapeTypstString(buffer)}")`;
+            buffer = '';
+        }
+    };
+
+    for (const ch of String(text).replace(/\r\n?/g, '\n')) {
+        if (ch === '\n') {
+            flush();
+            out += '#linebreak()';
+        } else {
+            buffer += ch;
+        }
+    }
+
+    flush();
+    return out;
+}
+
+function resolveHljsKind(classNames) {
+    const classes = new Set(
+        classNames
+            .split(/\s+/)
+            .map(s => s.trim())
+            .filter(Boolean)
+            .map(s => s.replace(/^hljs-/, ''))
+    );
+
+    if (classes.size === 0) return null;
+    if (classes.has('addition')) return 'addition';
+    if (classes.has('deletion')) return 'deletion';
+    if (classes.has('section')) return 'section';
+    if (classes.has('bullet')) return 'bullet';
+    if (classes.has('emphasis')) return 'emphasis';
+    if (classes.has('strong')) return 'strong';
+    if (classes.has('variable') && classes.has('language_')) return 'keyword';
+    if (
+        classes.has('doctag') ||
+        classes.has('keyword') ||
+        classes.has('template-tag') ||
+        classes.has('template-variable') ||
+        classes.has('type')
+    ) return 'keyword';
+    if (classes.has('title')) return 'title';
+    if (
+        classes.has('attr') ||
+        classes.has('attribute') ||
+        classes.has('literal') ||
+        classes.has('meta') ||
+        classes.has('number') ||
+        classes.has('operator') ||
+        classes.has('variable') ||
+        classes.has('selector-attr') ||
+        classes.has('selector-class') ||
+        classes.has('selector-id')
+    ) return 'constant';
+    if (classes.has('regexp') || classes.has('string')) return 'string';
+    if (classes.has('built_in') || classes.has('symbol')) return 'variable';
+    if (classes.has('comment') || classes.has('code') || classes.has('formula')) return 'comment';
+    if (classes.has('name') || classes.has('quote') || classes.has('selector-tag') || classes.has('selector-pseudo')) {
+        return 'tag';
+    }
+    return null;
+}
+
+function parseHljsHtml(html) {
+    const root = { kind: null, children: [] };
+    const stack = [root];
+    let i = 0;
+
+    while (i < html.length) {
+        if (html.startsWith('<span class="', i)) {
+            const classStart = i + '<span class="'.length;
+            const classEnd = html.indexOf('">', classStart);
+            if (classEnd === -1) break;
+
+            const node = {
+                kind: resolveHljsKind(html.slice(classStart, classEnd)),
+                children: [],
+            };
+            stack[stack.length - 1].children.push(node);
+            stack.push(node);
+            i = classEnd + 2;
+            continue;
+        }
+
+        if (html.startsWith('</span>', i)) {
+            if (stack.length > 1) stack.pop();
+            i += '</span>'.length;
+            continue;
+        }
+
+        const nextTag = html.indexOf('<', i);
+        const end = nextTag === -1 ? html.length : nextTag;
+        const text = decodeHtmlEntities(html.slice(i, end));
+        if (text.length > 0) stack[stack.length - 1].children.push({ text });
+        i = end;
+    }
+
+    return root.children;
+}
+
+function renderHljsNodesToTypst(nodes) {
+    let out = '';
+
+    for (const node of nodes) {
+        if (Object.prototype.hasOwnProperty.call(node, 'text')) {
+            out += textToTypst(node.text);
+            continue;
+        }
+
+        const body = renderHljsNodesToTypst(node.children);
+        out += node.kind ? `#mdf-code-token("${node.kind}")[${body}]` : body;
+    }
+
+    return out;
+}
+
+function renderCodeBlockToTypst(content, info = '') {
+    const lang = String(info).trim().split(/\s+/)[0] || '';
+    const langArg = lang ? `"${escapeTypstString(lang)}"` : 'none';
+
+    let body = textToTypst(content);
+    if (lang && hljs.getLanguage(lang)) {
+        try {
+            const highlighted = hljs.highlight(content, { language: lang, ignoreIllegals: true }).value;
+            body = renderHljsNodesToTypst(parseHljsHtml(highlighted));
+        } catch (_) {
+            // Fall back to plain text when highlight.js rejects the snippet.
+        }
+    }
+
+    return `#mdf-code-block(lang: ${langArg})[${body}]\n\n`;
+}
+
 // ── markdown-it instance (NO texmath — math is passthrough) ──────────────────
 const md = new MarkdownIt({ html: true, breaks: true })
     .use(anchor, {
         permalink: false,
         slugify: s => encodeURIComponent(String(s).trim().toLowerCase().replace(/\s+/g, '-')),
-    });
+    })
+    .use(githubAlerts, { icons: {} });
 
 // ── Callout containers ────────────────────────────────────────────────────────
 const CALLOUT_NAMES = [
@@ -77,7 +236,14 @@ md.renderer.renderToken = () => '';
 const r = md.renderer.rules;
 
 // Headings
-r.heading_open  = (tokens, idx) => '='.repeat(parseInt(tokens[idx].tag.slice(1))) + ' ';
+r.heading_open = (tokens, idx) => {
+    const prefix = '='.repeat(parseInt(tokens[idx].tag.slice(1))) + ' ';
+    // Reduce gap between consecutive headings (like CSS h1+h2 { margin-top: 0.6em })
+    if (idx > 0 && tokens[idx - 1].type === 'heading_close') {
+        return '#v(-1.4em)\n' + prefix;
+    }
+    return prefix;
+};
 r.heading_close = () => '\n\n';
 
 // Paragraphs — single newline inside lists to avoid breaking list parsing
@@ -93,14 +259,11 @@ r.em_close     = () => '_';
 // Inline code
 r.code_inline = (tokens, idx) => '`' + tokens[idx].content + '`';
 
-// Fenced code block — Typst native syntax highlighting
-r.fence = (tokens, idx) => {
-    const lang = (tokens[idx].info || '').trim();
-    return '```' + lang + '\n' + tokens[idx].content + '```\n\n';
-};
+// Fenced code block — highlight.js token colors mapped into Typst spans
+r.fence = (tokens, idx) => renderCodeBlockToTypst(tokens[idx].content, tokens[idx].info || '');
 
 // Indented code block
-r.code_block = (tokens, idx) => '```\n' + tokens[idx].content + '```\n\n';
+r.code_block = (tokens, idx) => renderCodeBlockToTypst(tokens[idx].content);
 
 // Horizontal rule
 r.hr = () => '#line(length: 100%)\n\n';
@@ -116,6 +279,16 @@ r.html_inline = () => '';
 // Blockquote
 r.blockquote_open  = () => '#quote[\n';
 r.blockquote_close = () => ']\n\n';
+
+// GitHub-style alerts (tokens rewritten by markdown-it-github-alerts)
+r.alert_open = (tokens, idx) => {
+    const { type, title } = tokens[idx].meta;
+    const defaultTitles = { note: 'Note', tip: 'Tip', important: 'Important', warning: 'Warning', caution: 'Caution' };
+    const isCustom = title && title !== defaultTitles[type];
+    const titleArg = isCustom ? `, title: [${title}]` : '';
+    return `#gh-alert("${type}"${titleArg})[\n`;
+};
+r.alert_close = () => ']\n\n';
 
 // Lists
 r.bullet_list_open   = () => { _listStack.push(false); return ''; };
@@ -145,7 +318,7 @@ r.link_close = () => ']';
 r.text = (tokens, idx) => {
     const c = tokens[idx].content;
     if (c === PAGEBREAK_MARKER) return '#pagebreak()';
-    if (c === TOC_MARKER)       return '#outline()';
+    if (c === TOC_MARKER)       return '#outline(title: none)';
     return c;
 };
 

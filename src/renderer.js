@@ -9,6 +9,7 @@ const hljs = require('highlight.js');
 const anchor = require('markdown-it-anchor');
 const taskLists = require('markdown-it-task-lists');
 const container = require('markdown-it-container');
+const { default: githubAlerts } = require('markdown-it-github-alerts');
 // const md = new MarkdownIt({
 //     html: true,
 //     highlight: function (str, lang) {
@@ -45,7 +46,11 @@ const md = new MarkdownIt({
         // e.g. hello world 你好 -> hello-world-%E4%BD%A0%E5%A5%BD(你好)
         slugify: (s) => encodeURIComponent(String(s).trim().toLowerCase().replace(/\s+/g, '-')),
     })
-    .use(taskLists, { enabled: true });
+    .use(taskLists, { enabled: true })
+    .use(githubAlerts, {
+        classPrefix: 'gh-alert',
+        icons: { note: '', tip: '', important: '', warning: '', caution: '' },
+    });
 // --- Alignment containers: :::center, :::right :::left ---
 const ALIGNMENTS = ['center', 'right', 'left'];
 for (const align of ALIGNMENTS) {
