@@ -10,6 +10,7 @@ useless/
 !README.md
 out/
 vscode-mdf/out/
+playground/dist/
 *.vsix
 
 Markdown-mark.svg

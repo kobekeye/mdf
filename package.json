@@ -13,7 +13,10 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node test/run.js"
+    "test": "node test/run.js",
+    "test:playground-fonts": "npm run playground:build && node test/playground-typst-fonts.js",
+    "playground:dev": "vite --config playground/vite.config.ts",
+    "playground:build": "vite build --config playground/vite.config.ts"
   },
   "keywords": [
     "markdown",
@@ -32,7 +35,10 @@
   "devDependencies": {
     "@myriaddreamin/typst-ts-node-compiler": "0.7.0-rc2",
     "@myriaddreamin/typst-ts-renderer": "0.7.0-rc2",
-    "@myriaddreamin/typst.ts": "0.7.0-rc2"
+    "@myriaddreamin/typst-ts-web-compiler": "0.7.0-rc2",
+    "@myriaddreamin/typst.ts": "0.7.0-rc2",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.3"
   },
   "dependencies": {
     "chokidar": "^5.0.0",
