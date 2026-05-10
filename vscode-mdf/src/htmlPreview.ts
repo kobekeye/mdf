@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { buildPreviewControls } from './themes';
 
 // Bundled by esbuild at build time (resolved from ../../src/renderer.js)
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -21,7 +22,7 @@ export function renderBodyHtml(content: string): string {
 
 /**
  * Parse @mdf-fonts metadata from theme CSS content and build a Google Fonts URL.
- * e.g. "Inter:400,700; Noto Sans TC:400,700" → Google Fonts CSS2 URL
+ * e.g. "Inter:400,400i,700; Noto Sans TC:400,700" → Google Fonts CSS2 URL
  */
 function buildGoogleFontsUrl(themeCss: string): string | null {
   const match = themeCss.match(/\/\*\s*@mdf-fonts:\s*([^*]+?)\s*\*\//);
@@ -32,15 +33,25 @@ function buildGoogleFontsUrl(themeCss: string): string | null {
     const colonIdx = spec.lastIndexOf(':');
     if (colonIdx === -1) return null;
     const family = spec.slice(0, colonIdx).trim().replace(/ /g, '+');
-    const weights = spec.slice(colonIdx + 1).split(',').map(w => w.trim()).filter(Boolean);
-    return `family=${family}:wght@${weights.join(';')}`;
+    const variants = spec.slice(colonIdx + 1).split(',').map(w => w.trim()).filter(Boolean).map(token => {
+      const variantMatch = token.match(/^(\d+)(i|italic)?$/i);
+      if (!variantMatch) return null;
+      return {
+        weight: variantMatch[1],
+        style: variantMatch[2] ? 'italic' : 'normal',
+      };
+    }).filter(Boolean) as Array<{ weight: string; style: 'normal' | 'italic' }>;
+    if (variants.length === 0) return null;
+    const hasItalic = variants.some(variant => variant.style === 'italic');
+    if (!hasItalic) {
+      return `family=${family}:wght@${variants.map(variant => variant.weight).join(';')}`;
+    }
+    return `family=${family}:ital,wght@${variants.map(variant => `${variant.style === 'italic' ? 1 : 0},${variant.weight}`).join(';')}`;
   }).filter(Boolean);
 
   if (params.length === 0) return null;
   return `https://fonts.googleapis.com/css2?${params.join('&')}&display=swap`;
 }
-
-const AVAILABLE_THEMES = ['default', 'asterisk'];
 
 // Cache parsed Google Fonts URLs by theme CSS path. The theme files ship with
 // the extension and don't change at runtime, so reading once is enough.
@@ -61,6 +72,7 @@ export function buildWebviewHtml(
   context: vscode.ExtensionContext,
   bodyHtml: string,
   theme: string = 'default',
+  mode: string = 'html',
 ): string {
   const webview = panel.webview;
   const assetsDir = path.join(context.extensionPath, 'out', 'assets');
@@ -81,11 +93,6 @@ export function buildWebviewHtml(
   );
 
   const fontsLink = getFontsLink(path.join(assetsDir, `${theme}.css`));
-
-  // Build theme options for the selector
-  const themeOptions = AVAILABLE_THEMES
-    .map(t => `<option value="${t}"${t === theme ? ' selected' : ''}>${t}</option>`)
-    .join('');
 
   const nonce = getNonce();
   const csp = [
@@ -112,9 +119,7 @@ export function buildWebviewHtml(
   ${fontsLink}
 </head>
 <body>
-  <div id="mdf-toolbar">
-    <select id="mdf-theme-select">${themeOptions}</select>
-  </div>
+  ${buildPreviewControls(theme, mode)}
   <div id="mdf-content">${bodyHtml}</div>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>

@@ -36,6 +36,11 @@ type IncomingMessage = RenderMessage | ErrorMessage;
 const vscode = acquireVsCodeApi();
 const container = document.getElementById('typst-container')!;
 const statusEl = document.getElementById('typst-status')!;
+const controls = document.getElementById('mdf-controls');
+const menuToggle = document.getElementById('mdf-menu-toggle') as HTMLButtonElement | null;
+const menuPanel = document.getElementById('mdf-menu-panel');
+const themeSelect = document.getElementById('mdf-theme-select') as HTMLSelectElement | null;
+const modeSelect = document.getElementById('mdf-mode-select') as HTMLSelectElement | null;
 
 type SvgMetrics = { width: number; height: number };
 const svgMetrics = new WeakMap<SVGSVGElement, SvgMetrics>();
@@ -98,6 +103,36 @@ statusEl.addEventListener('click', (ev) => {
   }
 });
 
+function setMenuOpen(open: boolean): void {
+  if (!controls || !menuToggle) return;
+  controls.classList.toggle('open', open);
+  menuToggle.setAttribute('aria-expanded', String(open));
+}
+
+menuToggle?.addEventListener('click', (ev) => {
+  ev.stopPropagation();
+  const open = controls?.classList.contains('open') ?? false;
+  setMenuOpen(!open);
+});
+
+menuPanel?.addEventListener('click', (ev) => {
+  ev.stopPropagation();
+});
+
+window.addEventListener('click', () => setMenuOpen(false));
+
+if (themeSelect) {
+  themeSelect.addEventListener('change', () => {
+    vscode.postMessage({ type: 'switchTheme', theme: themeSelect.value });
+  });
+}
+
+if (modeSelect) {
+  modeSelect.addEventListener('change', () => {
+    vscode.postMessage({ type: 'switchMode', mode: modeSelect.value });
+  });
+}
+
 // ─── Layout / zoom ───────────────────────────────────────────────────────────
 
 const persistedState = vscode.getState() || {};
@@ -113,6 +148,13 @@ function readTranslateX(el: Element): number {
   const match = /translate\(\s*([^,\s)]+)/.exec(transform);
   const x = match ? Number.parseFloat(match[1]) : 0;
   return Number.isFinite(x) ? x : 0;
+}
+
+function readTranslateY(el: Element): number {
+  const transform = el.getAttribute('transform') || '';
+  const match = /translate\(\s*[^,\s)]+\s*,\s*([^)\s]+)/.exec(transform);
+  const y = match ? Number.parseFloat(match[1]) : 0;
+  return Number.isFinite(y) ? y : 0;
 }
 
 function readPositiveNumber(el: Element, attr: string): number | null {
@@ -221,15 +263,72 @@ function layoutPages(showIndicator = false): void {
   if (showIndicator) showZoomIndicator(level);
 }
 
+type TypstJumpTarget = {
+  page: number;
+  x: number;
+  y: number;
+};
+
+function parseTypstJump(el: Element): TypstJumpTarget | null {
+  const handler = el.getAttribute('onclick') || '';
+  const match = /handleTypstLocation\(\s*this\s*,\s*(\d+)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/.exec(handler);
+  if (!match) return null;
+
+  const page = Number.parseInt(match[1], 10);
+  const x = Number.parseFloat(match[2]);
+  const y = Number.parseFloat(match[3]);
+  if (!Number.isFinite(page) || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return { page, x, y };
+}
+
+function scrollToTypstLocation(target: TypstJumpTarget): void {
+  const svg = container.querySelector('svg.typst-doc');
+  if (!(svg instanceof SVGSVGElement)) return;
+
+  const naturalWidth = readPositiveNumber(svg, 'data-width')
+    ?? readPositiveNumber(svg, 'width')
+    ?? svg.viewBox.baseVal.width;
+  if (!(naturalWidth > 0)) return;
+
+  const pages = Array.from(svg.querySelectorAll(':scope > g.typst-page'))
+    .filter((el): el is SVGGElement => el instanceof SVGGElement);
+  const page = pages[target.page - 1];
+  if (!page) return;
+
+  const scale = svg.getBoundingClientRect().width / naturalWidth;
+  if (!(scale > 0)) return;
+
+  const docY = readTranslateY(page) + target.y;
+  const top = window.scrollY + svg.getBoundingClientRect().top + docY * scale;
+  window.scrollTo(0, Math.max(0, top - 16));
+  vscode.setState({ ...vscode.getState(), scrollTop: window.scrollY });
+}
+
 zoom = installZoom({
   initialLevel: persistedState.zoom || 1,
   onZoomChange: () => layoutPages(true),
 });
 
 window.addEventListener('resize', () => layoutPages(false), { passive: true });
+window.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape') setMenuOpen(false);
+});
 window.addEventListener('scroll', () => {
   vscode.setState({ ...vscode.getState(), scrollTop: window.scrollY });
 }, { passive: true });
+container.addEventListener('click', (ev) => {
+  const target = ev.target;
+  if (!(target instanceof Element)) return;
+
+  const link = target.closest('a');
+  if (!(link instanceof Element)) return;
+
+  const jump = parseTypstJump(link);
+  if (!jump) return;
+
+  ev.preventDefault();
+  scrollToTypstLocation(jump);
+});
 
 // ─── Render loop ─────────────────────────────────────────────────────────────
 

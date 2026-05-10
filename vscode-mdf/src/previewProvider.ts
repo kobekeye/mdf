@@ -22,6 +22,8 @@ interface PanelEntry {
 
 // One panel per document URI
 const panels = new Map<string, PanelEntry>();
+const previewStateEmitter = new vscode.EventEmitter<void>();
+export const onDidChangePreviewState = previewStateEmitter.event;
 
 // Diagnostics for Typst compile errors — shown in Problems panel
 const diagnostics = vscode.languages.createDiagnosticCollection('mdf-typst');
@@ -76,6 +78,14 @@ function currentTheme(): string {
   return vscode.workspace.getConfiguration('mdf').get<string>('theme', 'default');
 }
 
+export function getPreviewState(
+  document: vscode.TextDocument,
+): { mode: string; theme: string } | undefined {
+  const entry = panels.get(document.uri.toString());
+  if (!entry) return undefined;
+  return { mode: entry.mode, theme: entry.theme };
+}
+
 /** Rewrite relative image src attributes in HTML to webview URIs. */
 function rewriteImageSrcs(
   html: string,
@@ -126,15 +136,39 @@ function setWebviewContent(
 
   if (mode === 'typst') {
     entry.webviewReady = false;
-    panel.webview.html = buildTypstWebviewHtml(panel, context);
+    panel.webview.html = buildTypstWebviewHtml(panel, context, theme, mode);
   } else {
     try {
       const bodyHtml = rewriteImageSrcs(renderBodyHtml(content), panel.webview, workspace);
-      panel.webview.html = buildWebviewHtml(panel, context, bodyHtml, theme);
+      panel.webview.html = buildWebviewHtml(panel, context, bodyHtml, theme, mode);
     } catch (err) {
       panel.webview.html = errorHtml(err instanceof Error ? (err.stack || err.message) : String(err));
     }
   }
+}
+
+function updatePanelSettings(
+  context: vscode.ExtensionContext,
+  entry: PanelEntry,
+  next: Partial<Pick<PanelEntry, 'mode' | 'theme'>>,
+): void {
+  const nextMode = next.mode ?? entry.mode;
+  const nextTheme = next.theme ?? entry.theme;
+  if (nextMode === entry.mode && nextTheme === entry.theme) return;
+
+  const needsSessionReset =
+    entry.mode === 'typst' ||
+    nextMode === 'typst' ||
+    entry.theme !== nextTheme;
+  if (needsSessionReset) {
+    disposeSession(entry);
+  }
+
+  entry.mode = nextMode;
+  entry.theme = nextTheme;
+  entry.typstRenderVersion += 1;
+  setWebviewContent(entry.panel, context, entry);
+  previewStateEmitter.fire();
 }
 
 /** Send a live update via postMessage (does not reset the webview). */
@@ -145,7 +179,7 @@ async function postUpdate(
 ): Promise<void> {
   const content = entry.document.getText();
   const workspace = path.dirname(entry.document.uri.fsPath);
-  const { mode } = entry;
+  const { mode, theme } = entry;
 
   if (mode === 'typst') {
     if (!entry.webviewReady) {
@@ -156,7 +190,7 @@ async function postUpdate(
       const session = await getOrCreateSession(entry, context);
       session.setWorkspace(workspace);
       const renderVersion = ++entry.typstRenderVersion;
-      const typstSource = buildFullTypst(context.extensionPath, content);
+      const typstSource = buildFullTypst(context.extensionPath, content, theme);
       const artifact = await session.compile(typstSource);
       if (renderVersion !== entry.typstRenderVersion) return;
       panel.webview.postMessage({
@@ -227,6 +261,7 @@ export function openOrRevealPreview(
     typstRenderVersion: 0,
   };
   panels.set(docUri, entry);
+  previewStateEmitter.fire();
 
   // Initial render
   setWebviewContent(panel, context, entry);
@@ -242,34 +277,24 @@ export function openOrRevealPreview(
     }
     // The Typst pipeline now coalesces to the latest source and ships deltas,
     // but a slightly wider debounce still avoids thrashing on bursty typing.
-    const delay = ent.mode === 'typst' ? 30 : 80;
+    const delay = ent.mode === 'typst' ? 30 : 30;
     ent.pendingTimer = setTimeout(() => {
       ent.pendingTimer = null;
       void postUpdate(ent.panel, context, ent);
     }, delay);
   });
 
-  // Mode/theme switch: dispose session if leaving typst, then fully reload
-  const configDisposable = vscode.workspace.onDidChangeConfiguration((e) => {
-    if (!e.affectsConfiguration('mdf.mode') && !e.affectsConfiguration('mdf.theme')) return;
+  // Handle messages from webview (theme selector + mode selector + ready signal + show-output).
+  const messageDisposable = panel.webview.onDidReceiveMessage((msg) => {
     const ent = panels.get(docUri);
     if (!ent) return;
-    const newMode = currentMode();
-    if (newMode !== ent.mode) {
-      disposeSession(ent);
-    }
-    ent.mode = newMode;
-    ent.theme = currentTheme();
-    setWebviewContent(ent.panel, context, ent);
-  });
 
-  // Handle messages from webview (theme selector + ready signal + show-output).
-  const messageDisposable = panel.webview.onDidReceiveMessage((msg) => {
-    if (msg.type === 'switchTheme') {
-      vscode.workspace.getConfiguration('mdf').update('theme', msg.theme, vscode.ConfigurationTarget.Global);
+    if (msg.type === 'switchTheme' && typeof msg.theme === 'string') {
+      updatePanelSettings(context, ent, { theme: msg.theme });
+    } else if (msg.type === 'switchMode' && typeof msg.mode === 'string') {
+      updatePanelSettings(context, ent, { mode: msg.mode });
     } else if (msg.type === 'ready') {
-      const ent = panels.get(docUri);
-      if (ent && ent.mode === 'typst') {
+      if (ent.mode === 'typst') {
         ent.webviewReady = true;
         // A recreated webview starts with a fresh renderer session, but the
         // extension-side incremental compiler may still be holding onto the
@@ -291,15 +316,25 @@ export function openOrRevealPreview(
 
   panel.onDidDispose(() => {
     panels.delete(docUri);
+    previewStateEmitter.fire();
     if (entry.pendingTimer !== null) {
       clearTimeout(entry.pendingTimer);
     }
     diagnostics.delete(entry.document.uri);
     disposeSession(entry);
     changeDisposable.dispose();
-    configDisposable.dispose();
     messageDisposable.dispose();
   });
+}
+
+export function togglePreviewModeForDocument(
+  context: vscode.ExtensionContext,
+  document: vscode.TextDocument,
+): boolean {
+  const entry = panels.get(document.uri.toString());
+  if (!entry) return false;
+  updatePanelSettings(context, entry, { mode: entry.mode === 'html' ? 'typst' : 'html' });
+  return true;
 }
 
 export function disposeAll(): void {

@@ -499,6 +499,52 @@ async function main() {
       return true;
     }
 
+    async function runTocJumpCase() {
+      if (!(await runCase(
+        'toc jump',
+        [
+          '[TOC]',
+          '',
+          '# Intro',
+          '',
+          'Intro paragraph.',
+          '',
+          '# Deep Section',
+          '',
+          ...Array.from({ length: 80 }, (_, i) => `Paragraph ${i + 1}: lorem ipsum dolor sit amet.`),
+          '',
+          '## Target Heading',
+          '',
+          'Target body.',
+        ].join('\n'),
+        1,
+      ))) return false;
+
+      const linkCount = await page.evaluate(() => {
+        window.scrollTo(0, 0);
+        return document.querySelectorAll('#typst-container svg a[onclick*="handleTypstLocation"]').length;
+      });
+      if (linkCount < 2) {
+        console.error(`✗ toc jump: expected at least 2 outline links, got ${linkCount}`);
+        return false;
+      }
+
+      await page.evaluate(() => {
+        const links = Array.from(document.querySelectorAll('#typst-container svg a[onclick*="handleTypstLocation"]'));
+        links[1]?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      });
+      await sleep(100);
+
+      const scrollTop = await page.evaluate(() => window.scrollY);
+      if (!(scrollTop > 100)) {
+        console.error(`✗ toc jump: expected scroll after click, got ${scrollTop}`);
+        return false;
+      }
+
+      console.log(`✓ toc jump — scrollTop=${scrollTop}`);
+      return true;
+    }
+
     let allPass = true;
     // ── Case 1: the minimal "# mdf" that broke live preview before ────────
     if (!(await runCase('minimal "# mdf"', '# mdf\n', 1))) allPass = false;
@@ -545,6 +591,9 @@ async function main() {
     if (!(await runPageGapCase())) allPass = false;
 
     // ── Case 7: trackpad pinch thresholded zoom ───────────────────────
+    if (!(await runTocJumpCase())) allPass = false;
+
+    // ── Case 8: trackpad pinch thresholded zoom ───────────────────────
     if (!(await runZoomCase())) allPass = false;
 
     if (!allPass) {

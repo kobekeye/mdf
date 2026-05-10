@@ -1,5 +1,5 @@
 const esbuild = require('esbuild');
-const { cpSync, mkdirSync, readdirSync, existsSync } = require('fs');
+const { cpSync, mkdirSync, readdirSync, existsSync, watchFile } = require('fs');
 const path = require('path');
 
 const mdfRoot = path.join(__dirname, '..');
@@ -45,11 +45,29 @@ function copyAssets() {
   cpSync(path.join(mdfRoot, 'themes/default.css'), path.join(assetsDir, 'default.css'));
   cpSync(path.join(mdfRoot, 'themes/asterisk.css'), path.join(assetsDir, 'asterisk.css'));
   cpSync(path.join(mdfRoot, 'themes/default.typ'), path.join(assetsDir, 'default.typ'));
+  cpSync(path.join(mdfRoot, 'themes/asterisk.typ'), path.join(assetsDir, 'asterisk.typ'));
   cpSync(
     path.join(__dirname, 'vendor', 'typst-assets'),
     path.join(assetsDir, 'typst-assets'),
     { recursive: true },
   );
+}
+
+function watchAssetCopies() {
+  const assetSources = [
+    path.join(mdfRoot, 'themes', 'default.css'),
+    path.join(mdfRoot, 'themes', 'asterisk.css'),
+    path.join(mdfRoot, 'themes', 'default.typ'),
+    path.join(mdfRoot, 'themes', 'asterisk.typ'),
+  ];
+
+  for (const file of assetSources) {
+    watchFile(file, { interval: 250 }, (curr, prev) => {
+      if (curr.mtimeMs === 0 || curr.mtimeMs === prev.mtimeMs) return;
+      copyAssets();
+      console.log(`Assets updated: ${path.relative(mdfRoot, file)}`);
+    });
+  }
 }
 
 // Bundle the Typst compiler(s) into out/compiler/ so the extension doesn't
@@ -108,6 +126,7 @@ copyAssets();
 copyCompiler();
 
 if (isWatch) {
+  watchAssetCopies();
   Promise.all([
     esbuild.context(hostOptions).then(ctx => ctx.watch()),
     esbuild.context(webviewOptions).then(ctx => ctx.watch()),

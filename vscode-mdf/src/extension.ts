@@ -1,5 +1,12 @@
 import * as vscode from 'vscode';
-import { openOrRevealPreview, disposeAll, outputChannel } from './previewProvider';
+import {
+  openOrRevealPreview,
+  disposeAll,
+  outputChannel,
+  getPreviewState,
+  togglePreviewModeForDocument,
+  onDidChangePreviewState,
+} from './previewProvider';
 import { registerExportPdfCommand } from './exportPdf';
 import { registerMathCompletions } from './completions';
 
@@ -11,11 +18,19 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('mdf.switchMode', async () => {
-      const cfg = vscode.workspace.getConfiguration('mdf');
-      const current = cfg.get<string>('mode', 'html');
-      const next = current === 'html' ? 'typst' : 'html';
-      await cfg.update('mode', next, vscode.ConfigurationTarget.Global);
-      vscode.window.showInformationMessage(`mdf: switched to ${next.toUpperCase()} mode`);
+      const doc = vscode.window.activeTextEditor?.document;
+      if (!doc || doc.languageId !== 'markdown') {
+        vscode.window.showWarningMessage('mdf: open a Markdown file first.');
+        return;
+      }
+      if (!togglePreviewModeForDocument(context, doc)) {
+        vscode.window.showWarningMessage('mdf: open the preview panel first.');
+        return;
+      }
+      const state = getPreviewState(doc);
+      if (state) {
+        vscode.window.showInformationMessage(`mdf: switched preview to ${state.mode.toUpperCase()} mode`);
+      }
     }),
     vscode.commands.registerCommand('mdf.showOutput', () => outputChannel.show()),
     vscode.commands.registerCommand('mdf.openPreview', () => {
@@ -55,32 +70,33 @@ function applyMarkdownEditorDefaults(): void {
   }
 }
 
-// Mode-toggle status bar item. Visible only while a markdown file is active;
-// clicking it cycles HTML ⇄ Typst via the `mdf.switchMode` command.
+// Mode-toggle status bar item. Visible only while the active markdown file has
+// an MDF preview panel; clicking it cycles that panel between HTML and Typst.
 function registerStatusBar(context: vscode.ExtensionContext): void {
   const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   item.command = 'mdf.switchMode';
-  item.tooltip = 'mdf: click to switch HTML / Typst mode';
+  item.tooltip = 'mdf: click to switch the current preview panel mode';
   context.subscriptions.push(item);
 
   function update(): void {
-    const mode = vscode.workspace.getConfiguration('mdf').get<string>('mode', 'html');
-    item.text = `MDF: ${mode.toUpperCase()}`;
-  }
-
-  function syncVisibility(): void {
-    const lang = vscode.window.activeTextEditor?.document.languageId;
-    if (lang === 'markdown') item.show();
-    else item.hide();
+    const doc = vscode.window.activeTextEditor?.document;
+    if (!doc || doc.languageId !== 'markdown') {
+      item.hide();
+      return;
+    }
+    const state = getPreviewState(doc);
+    if (!state) {
+      item.hide();
+      return;
+    }
+    item.text = `MDF: ${state.mode.toUpperCase()}`;
+    item.show();
   }
 
   update();
-  syncVisibility();
 
   context.subscriptions.push(
-    vscode.window.onDidChangeActiveTextEditor(syncVisibility),
-    vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration('mdf.mode')) update();
-    }),
+    vscode.window.onDidChangeActiveTextEditor(update),
+    onDidChangePreviewState(update),
   );
 }

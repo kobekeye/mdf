@@ -105,11 +105,12 @@ export function compileToPdf(
   extensionPath: string,
   content: string,
   workspace: string,
+  theme = 'default',
   context?: vscode.ExtensionContext,
 ): Buffer {
   const session = new TypstPdfCompilerSession(workspace, extensionPath, context);
   try {
-    return session.pdf(buildFullTypst(extensionPath, content));
+    return session.pdf(buildFullTypst(extensionPath, content, theme));
   } finally {
     session.dispose();
   }

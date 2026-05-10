@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { execFile } from 'child_process';
 import { compileToPdf } from './typst';
+import { getPreviewState } from './previewProvider';
 
 export function registerExportPdfCommand(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
@@ -25,16 +26,18 @@ async function exportPdf(context: vscode.ExtensionContext): Promise<void> {
   });
   if (!outputUri) return;
 
-  const mode = vscode.workspace.getConfiguration('mdf').get<string>('mode', 'html');
+  const previewState = getPreviewState(doc);
+  const mode = previewState?.mode
+    ?? vscode.workspace.getConfiguration('mdf').get<string>('mode', 'html');
 
   await vscode.window.withProgress(
     { location: vscode.ProgressLocation.Notification, title: `mdf: Exporting PDF (${mode.toUpperCase()})…` },
     async () => {
       try {
         if (mode === 'typst') {
-          await exportTypstPdf(context, doc, outputUri);
+          await exportTypstPdf(context, doc, outputUri, previewState?.theme);
         } else {
-          await exportHtmlPdf(doc, outputUri);
+          await exportHtmlPdf(doc, outputUri, previewState?.theme);
         }
         vscode.window.showInformationMessage(`mdf: PDF saved to ${outputUri.fsPath}`);
       } catch (err) {
@@ -48,14 +51,22 @@ async function exportTypstPdf(
   context: vscode.ExtensionContext,
   doc: vscode.TextDocument,
   outputUri: vscode.Uri,
+  previewTheme?: string,
 ): Promise<void> {
   const workspace = path.dirname(doc.uri.fsPath);
-  const pdfBuffer = compileToPdf(context.extensionPath, doc.getText(), workspace, context);
+  const theme = previewTheme
+    ?? vscode.workspace.getConfiguration('mdf').get<string>('theme', 'default');
+  const pdfBuffer = compileToPdf(context.extensionPath, doc.getText(), workspace, theme, context);
   fs.writeFileSync(outputUri.fsPath, pdfBuffer);
 }
 
-async function exportHtmlPdf(doc: vscode.TextDocument, outputUri: vscode.Uri): Promise<void> {
-  const theme = vscode.workspace.getConfiguration('mdf').get<string>('theme', 'default');
+async function exportHtmlPdf(
+  doc: vscode.TextDocument,
+  outputUri: vscode.Uri,
+  previewTheme?: string,
+): Promise<void> {
+  const theme = previewTheme
+    ?? vscode.workspace.getConfiguration('mdf').get<string>('theme', 'default');
   const cliArgs = [doc.uri.fsPath, outputUri.fsPath];
   if (theme !== 'default') cliArgs.push('--theme', theme);
 

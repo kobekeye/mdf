@@ -99,7 +99,7 @@
           ],
           "enumDescriptions": [
             "Default — Inter + Noto Sans TC, clean and modern",
-            "Asterisk — Source Serif 4 + Noto Serif TC, warm and refined"
+            "Asterisk — Tinos + Noto Serif TC, warm and refined"
           ],
           "default": "default",
           "description": "Preview 與 PDF 輸出使用的主題"

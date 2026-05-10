@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { buildPreviewControls } from '../themes';
 
 const NONCE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 function getNonce(): string {
@@ -27,7 +28,7 @@ const STYLES = `
   }
   #typst-status {
     position: fixed;
-    top: 12px;
+    top: 56px;
     right: 12px;
     max-width: calc(100% - 24px);
     z-index: 10;
@@ -50,7 +51,7 @@ const STYLES = `
   #typst-zoom-indicator {
     position: fixed;
     right: 12px;
-    bottom: 12px;
+    bottom: 72px;
     z-index: 11;
     padding: 8px 12px;
     border-radius: 4px;
@@ -66,11 +67,103 @@ const STYLES = `
     opacity: 1;
     transform: translateY(0);
   }
+  #mdf-controls {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+  }
+  #mdf-menu-panel {
+    min-width: 188px;
+    padding: 12px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+    transform-origin: bottom right;
+    pointer-events: none;
+    transition: opacity 0.16s ease, transform 0.16s ease;
+    backdrop-filter: blur(12px);
+  }
+  #mdf-controls.open #mdf-menu-panel {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+  #mdf-menu-toggle {
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.88);
+    color: #fff;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.2);
+    transition: transform 0.16s ease, background 0.16s ease;
+  }
+  #mdf-menu-toggle:hover {
+    background: rgba(15, 23, 42, 0.96);
+    transform: translateY(-1px);
+  }
+  #mdf-menu-toggle:focus-visible {
+    outline: 2px solid rgba(59, 130, 246, 0.9);
+    outline-offset: 2px;
+  }
+  .mdf-menu-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .mdf-menu-field + .mdf-menu-field {
+    margin-top: 10px;
+  }
+  .mdf-menu-field > span {
+    color: #64748b;
+    font: 600 10px/1.2 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  #mdf-theme-select, #mdf-mode-select {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    background-color: rgba(248, 250, 252, 0.92);
+    border: 1px solid #d0d7e2;
+    border-radius: 8px;
+    padding: 7px 28px 7px 10px;
+    font-size: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #333;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  #mdf-theme-select:hover, #mdf-mode-select:hover {
+    background-color: #fff;
+    border-color: #b8c2cf;
+  }
+  #mdf-theme-select:focus, #mdf-mode-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+  }
 `;
 
 export function buildTypstWebviewHtml(
   panel: vscode.WebviewPanel,
   context: vscode.ExtensionContext,
+  theme: string,
+  mode: string,
 ): string {
   const webview = panel.webview;
 
@@ -101,6 +194,7 @@ export function buildTypstWebviewHtml(
 <style>${STYLES}</style>
 </head>
 <body>
+${buildPreviewControls(theme, mode)}
 <div id="typst-container"></div>
 <div id="typst-status"><div class="typst-loading">Loading renderer…</div></div>
 <script nonce="${nonce}">

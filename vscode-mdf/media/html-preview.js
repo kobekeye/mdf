@@ -3,7 +3,11 @@
 
   const vscode = acquireVsCodeApi();
   const content = document.getElementById('mdf-content');
+  const controls = document.getElementById('mdf-controls');
+  const menuToggle = document.getElementById('mdf-menu-toggle');
+  const menuPanel = document.getElementById('mdf-menu-panel');
   const themeSelect = document.getElementById('mdf-theme-select');
+  const modeSelect = document.getElementById('mdf-mode-select');
 
   // ── Zoom ──────────────────────────────────────────────────
   // Discrete factor table (à la pdf.js / tinymist) — steps widen at extremes
@@ -54,6 +58,26 @@
   // Apply persisted zoom
   if (zoomLevel !== 1) applyZoom();
 
+  function setMenuOpen(open) {
+    if (!controls || !menuToggle) return;
+    controls.classList.toggle('open', open);
+    menuToggle.setAttribute('aria-expanded', String(open));
+  }
+
+  if (menuToggle) {
+    menuToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = controls && controls.classList.contains('open');
+      setMenuOpen(!open);
+    });
+  }
+
+  if (menuPanel) {
+    menuPanel.addEventListener('click', (e) => e.stopPropagation());
+  }
+
+  window.addEventListener('click', () => setMenuOpen(false));
+
   // Ctrl+Scroll / trackpad pinch — accumulate delta before stepping (tinymist approach)
   window.addEventListener('wheel', (e) => {
     if (!(e.ctrlKey || e.metaKey)) return;
@@ -73,6 +97,10 @@
     else if (e.key === '0')            { e.preventDefault(); zoomLevel = 1; applyZoom(); }
   });
 
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') setMenuOpen(false);
+  });
+
   // ── Scroll restore ────────────────────────────────────────
   if (state.scrollTop) {
     window.scrollTo(0, state.scrollTop);
@@ -87,6 +115,12 @@
   if (themeSelect) {
     themeSelect.addEventListener('change', () => {
       vscode.postMessage({ type: 'switchTheme', theme: themeSelect.value });
+    });
+  }
+
+  if (modeSelect) {
+    modeSelect.addEventListener('change', () => {
+      vscode.postMessage({ type: 'switchMode', mode: modeSelect.value });
     });
   }
 
