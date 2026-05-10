@@ -7,6 +7,8 @@ node_modules/
 useless/
 *.md
 !test/**/*.md
+!playground/src/sample-html.md
+!playground/src/sample-typst.md
 !README.md
 out/
 vscode-mdf/out/
