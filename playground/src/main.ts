@@ -7,7 +7,6 @@ import defaultThemeTypText from '../../themes/default.typ?raw';
 import asteriskThemeCssText from '../../themes/asterisk.css?raw';
 import asteriskThemeCssUrl from '../../themes/asterisk.css?url';
 import asteriskThemeTypText from '../../themes/asterisk.typ?raw';
-import logoAssetUrl from '../../Markdown-mark.svg?url';
 import katexCssUrl from 'katex/dist/katex.min.css?url';
 import highlightCssUrl from 'highlight.js/styles/github-dark.css?url';
 import texmathCssUrl from 'markdown-it-texmath/css/texmath.css?url';
@@ -52,10 +51,6 @@ const sampleMarkdownSourceByMode: Record<PreviewMode, string> = {
   html: htmlSampleSource,
   typst: typstSampleSource,
 };
-
-function hydrateSampleMarkdown(markdown: string): string {
-  return markdown.replace(/Markdown-mark\.svg/g, logoAssetUrl);
-}
 
 const initialTheme = readStoredTheme();
 const initialMode = readStoredMode();
@@ -127,8 +122,8 @@ app.innerHTML = `
     </section>
 
     <p class="footnote">
-      Typst mode runs the browser WASM compiler and renderer. The sample image is bundled,
-      but arbitrary local relative images are not resolved in the playground yet.
+      Typst mode runs the browser WASM compiler and renderer. Arbitrary local relative images
+      are not resolved in the playground yet.
     </p>
   </main>
 `;
@@ -249,7 +244,7 @@ function readStoredMode(): PreviewMode {
 }
 
 function readBundledSampleMarkdown(mode: PreviewMode): string {
-  return hydrateSampleMarkdown(sampleMarkdownSourceByMode[mode]);
+  return sampleMarkdownSourceByMode[mode];
 }
 
 function readStoredMarkdown(mode: PreviewMode): string {
@@ -269,7 +264,7 @@ function migrateLegacyMarkdown(mode: PreviewMode): void {
   const hasModeSpecificContent = (Object.values(MARKDOWN_STORAGE_KEY_BY_MODE) as string[])
     .some((storageKey) => localStorage.getItem(storageKey) !== null);
   if (!hasModeSpecificContent) {
-    writeStoredMarkdown(mode, hydrateSampleMarkdown(legacy));
+    writeStoredMarkdown(mode, legacy);
   }
 
   localStorage.removeItem(STORAGE_KEYS.legacyMarkdown);
