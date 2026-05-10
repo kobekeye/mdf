@@ -142,12 +142,10 @@ if (args.length === 0 || args.includes('-h') || args.includes('--help')) {
 const watchMode = args.includes('--watch') || args.includes('-w');
 const typstMode = args.includes('--typ');
 
-
 // parse --theme option
 const themeIdx = args.indexOf('--theme');
-if (themeIdx !== -1 && args[themeIdx + 1]) {
-    setTheme(args[themeIdx + 1]);
-}
+const themeName = themeIdx !== -1 && args[themeIdx + 1] ? args[themeIdx + 1] : 'default';
+if (themeName) setTheme(themeName);
 
 const filteredArgs = args.filter((a, i) => a !== '--watch' && a !== '-w' && a !== '--typ' && a !== '--theme' && (themeIdx === -1 || i !== themeIdx + 1));
 const inputFile = filteredArgs[0];
@@ -159,7 +157,7 @@ if (!fs.existsSync(inputFile)) {
     process.exit(1);
 }
 
-const typTemplatePath = path.join(__dirname, '..', 'themes', 'default.typ');
+const typTemplatePath = path.join(__dirname, '..', 'themes', `${themeName}.typ`);
 
 // Thrown when typst compile fails. `diagnostics` is an array of { message, path, range, severity }
 // from NodeCompiler.fetchDiagnostics()/shortDiagnostics. The .message is already formatted for display.
@@ -193,9 +191,13 @@ async function convertToTypstPdf() {
 
     const { NodeCompiler } = require('@myriaddreamin/typst-ts-node-compiler');
 
+    if (!fs.existsSync(typTemplatePath)) {
+        throw new Error(`theme not found: ${themeName}`);
+    }
+
     const template = fs.readFileSync(typTemplatePath, 'utf-8');
     const fontSpecs = parseFontMeta(template);
-    await ensureFonts(fontSpecs, 'default');
+    await ensureFonts(fontSpecs, themeName);
 
     const body = renderToTypst(inputFile);
     const fullTypst = template + '\n' + body;

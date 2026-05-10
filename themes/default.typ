@@ -1,10 +1,10 @@
-// @mdf-fonts: Inter:400,700; Noto Sans TC:400,700; JetBrains Mono:400,700
+// @mdf-fonts: Inter:400,400i,700,700i; Noto Sans TC:400,700; JetBrains Mono:400,400i,700,700i
 // ── Page setup ────────────────────────────────────────────────────────────────
 #set page(
   paper: "a4",
   margin: 20mm,
   footer: context align(center)[
-    #text(size: 10pt, fill: rgb("#888"), font: "Times New Roman")[
+    #text(size: 10pt, fill: rgb("#888"), font: "Inter")[
       #counter(page).display()
     ]
   ],
@@ -12,7 +12,7 @@
 
 // ── Typography ────────────────────────────────────────────────────────────────
 #set text(font: ("Inter", "Noto Sans TC"), size: 10.5pt, lang: "en")
-#set par(justify: true, leading: 1.2em)
+#set par(justify: false, leading: 1.2em)
 
 // ── Headings ──────────────────────────────────────────────────────────────────
 #show heading.where(level: 1): it => {
@@ -45,13 +45,17 @@
 #let _code-token-styles = (
   keyword:  (fill: rgb("#ff7b72"), weight: none,   style: none,     bg: none),
   title:    (fill: rgb("#d2a8ff"), weight: none,   style: none,     bg: none),
+  type:     (fill: rgb("#79c0ff"), weight: none,   style: none,     bg: none),
   constant: (fill: rgb("#79c0ff"), weight: none,   style: none,     bg: none),
   string:   (fill: rgb("#a5d6ff"), weight: none,   style: none,     bg: none),
+  regexp:   (fill: rgb("#f2cc60"), weight: none,   style: none,     bg: none),
   variable: (fill: rgb("#ffa657"), weight: none,   style: none,     bg: none),
+  property: (fill: rgb("#ffa657"), weight: none,   style: none,     bg: none),
   comment:  (fill: rgb("#8b949e"), weight: none,   style: "italic", bg: none),
   tag:      (fill: rgb("#7ee787"), weight: none,   style: none,     bg: none),
   section:  (fill: rgb("#1f6feb"), weight: "bold", style: none,     bg: none),
   bullet:   (fill: rgb("#f2cc60"), weight: none,   style: none,     bg: none),
+  operator: (fill: _code-block-fg, weight: none,   style: none,     bg: none),
   emphasis: (fill: _code-block-fg, weight: none,   style: "italic", bg: none),
   strong:   (fill: _code-block-fg, weight: "bold", style: none,     bg: none),
   addition: (fill: rgb("#aff5b4"), weight: none,   style: none,     bg: rgb("#033a16")),
@@ -90,16 +94,16 @@
   inset: (left: 18pt, right: 18pt, top: 15pt, bottom: 15pt),
   width: 100%,
 )[
-  #set text(font: "JetBrains Mono", size: 8.8pt, fill: _code-block-fg)
-  #set par(leading: 1.45em, justify: false)
+  #set text(font: "JetBrains Mono", size: 10pt, fill: _code-block-fg)
+  #set par(leading: 1.05em, justify: false)
   #body
 ]
 
 #show raw.where(block: false): it => box(
   fill: _code-inline-bg,
-  inset: (x: 4pt, y: 1.5pt),
+  inset: (x: 4pt, y: 0pt),
+  outset: (top: 2.5pt, bottom: 2.0pt),
   radius: 3pt,
-  baseline: 40%,
 )[#text(font: "JetBrains Mono", size: 9pt, fill: _code-inline-fg)[#it]]
 
 #show raw.where(block: true): it => mdf-code-block[#it]
@@ -178,6 +182,43 @@
   #parbreak()
   #body
 ]
+
+// ── Tables ────────────────────────────────────────────────────────────────────
+#let _table-header-bg = rgb("#f5f6ff")
+#let _table-header-stroke = rgb("#d4d8f0")
+#let _table-body-stroke = rgb("#e8eaf0")
+#let _table-body-stripe = rgb("#fafafe")
+#let _table-header-text = rgb("#0d0d1a")
+#let _table-body-text = rgb("#334155")
+
+#show table: it => block(above: 1.2em, below: 1.2em)[#it]
+
+#set table(
+  align: left,
+  inset: (x: 14pt, y: 10pt),
+  fill: (_, y) => {
+    if y == 0 {
+      _table-header-bg
+    } else if calc.rem(y, 2) == 0 {
+      _table-body-stripe
+    }
+  },
+  stroke: (_, y) => {
+    if y == 0 {
+      (
+        top: 0.8pt + _table-header-stroke,
+        bottom: 1.5pt + _table-header-stroke,
+        left: 0.8pt + _table-header-stroke,
+        right: 0.8pt + _table-header-stroke,
+      )
+    } else {
+      0.8pt + _table-body-stroke
+    }
+  },
+)
+
+#show table.cell: set text(fill: _table-body-text)
+#show table.cell.where(y: 0): set text(weight: "bold", fill: _table-header-text)
 
 // ── Horizontal rule ───────────────────────────────────────────────────────────
 #show line: it => {

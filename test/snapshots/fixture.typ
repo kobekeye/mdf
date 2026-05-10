@@ -11,7 +11,7 @@
 #v(-1.4em)
 ==== Heading 4
 
-A paragraph with *bold*, _italic_, and `inline code`.
+A paragraph with #strong[bold], #emph[italic], and `inline code`.
 
 Another paragraph with #link("https://example.com")[a link] in it.
 
@@ -19,9 +19,9 @@ Another paragraph with #link("https://example.com")[a link] in it.
 
 == Code Blocks
 
-#mdf-code-block(lang: "javascript")[#mdf-code-token("keyword")[#text("function")]#text(" ")#mdf-code-token("title")[#text("hello")]#text("(")#text(") {")#linebreak()#text("    ")#mdf-code-token("keyword")[#text("console")]#text(".")#mdf-code-token("title")[#text("log")]#text("(")#mdf-code-token("string")[#text("\"world\"")]#text(");")#linebreak()#text("}")#linebreak()]
+#mdf-code-block(lang: "javascript")[#mdf-code-token("keyword")[#text("function")]#text(" ")#mdf-code-token("title")[#text("hello")]#text("(")#text(") {")#linebreak()#text("    ")#mdf-code-token("variable")[#text("console")]#text(".")#mdf-code-token("title")[#text("log")]#text("(")#mdf-code-token("string")[#text("\"world\"")]#text(");")#linebreak()#text("}")#linebreak()]
 
-#mdf-code-block(lang: "python")[#mdf-code-token("keyword")[#text("def")]#text(" ")#mdf-code-token("title")[#text("fibonacci")]#text("(")#text("n")#text("):")#linebreak()#text("    ")#mdf-code-token("keyword")[#text("if")]#text(" n <= ")#mdf-code-token("constant")[#text("1")]#text(":")#linebreak()#text("        ")#mdf-code-token("keyword")[#text("return")]#text(" n")#linebreak()#text("    ")#mdf-code-token("keyword")[#text("return")]#text(" fibonacci(n - ")#mdf-code-token("constant")[#text("1")]#text(") + fibonacci(n - ")#mdf-code-token("constant")[#text("2")]#text(")")#linebreak()]
+#mdf-code-block(lang: "python")[#mdf-code-token("keyword")[#text("def")]#text(" ")#mdf-code-token("title")[#text("fibonacci")]#text("(")#mdf-code-token("variable")[#text("n")]#text("):")#linebreak()#text("    ")#mdf-code-token("keyword")[#text("if")]#text(" n <= ")#mdf-code-token("constant")[#text("1")]#text(":")#linebreak()#text("        ")#mdf-code-token("keyword")[#text("return")]#text(" n")#linebreak()#text("    ")#mdf-code-token("keyword")[#text("return")]#text(" fibonacci(n - ")#mdf-code-token("constant")[#text("1")]#text(") + fibonacci(n - ")#mdf-code-token("constant")[#text("2")]#text(")")#linebreak()]
 
 #mdf-code-block(lang: none)[#text("indented code block line 1")#linebreak()#text("indented code block line 2")#linebreak()]
 
@@ -39,9 +39,11 @@ $$
 
 #table(
   columns: 3,
-  [Name],
-  [Age],
-  [Role],
+  table.header(
+    [Name],
+    [Age],
+    [Role],
+  ),
   [Alice],
   [30],
   [Engineer],
@@ -162,11 +164,11 @@ It can span multiple lines.
 
 == Mixed Content
 
-Here is a paragraph with *bold*, _italic_, `code`, and math $x^2 + y^2 = r^2$ all together.
+Here is a paragraph with #strong[bold], #emph[italic], `code`, and math $x^2 + y^2 = r^2$ all together.
 
-+ List with *bold* and $math$
++ List with #strong[bold] and $math$
 
-+ List with `code` and _italic_
++ List with `code` and #emph[italic]
   - Nested with #link("https://example.com")[link]
 
 

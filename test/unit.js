@@ -5,6 +5,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const { parseFontMeta, generateFontFaceCSS, getFontCacheDir } = require('../src/font-manager');
+const { renderToTypstFromString } = require('../src/typst-renderer');
 
 let passed = 0;
 let failed = 0;
@@ -40,6 +41,16 @@ console.log('\nparseFontMeta:');
 }
 
 {
+    const typ = '// @mdf-fonts: Inter:400,400i,700i';
+    const result = parseFontMeta(typ);
+    assert('parses italic font variants', JSON.stringify(result[0]?.variants) === JSON.stringify([
+        { weight: 400, style: 'normal' },
+        { weight: 400, style: 'italic' },
+        { weight: 700, style: 'italic' },
+    ]), `got: ${JSON.stringify(result[0]?.variants)}`);
+}
+
+{
     const noMeta = '/* just a normal comment */\nbody { color: red; }';
     const result = parseFontMeta(noMeta);
     assert('returns empty for no @mdf-fonts', result.length === 0);
@@ -72,7 +83,7 @@ console.log('\ngenerateFontFaceCSS:');
 
 {
     // Test that file:// URLs use forward slashes (important for Puppeteer on Windows)
-    const specs = [{ family: 'Inter', weights: [400] }];
+    const specs = [{ family: 'Inter', weights: [400], variants: [{ weight: 400, style: 'normal' }] }];
     const cacheDir = getFontCacheDir();
     const testFile = path.join(cacheDir, 'Inter-400.ttf');
 
@@ -95,6 +106,38 @@ console.log('\ngenerateFontFaceCSS:');
 
     // Clean up dummy file only if we created it
     if (!existed) fs.unlinkSync(testFile);
+}
+
+// ── renderToTypstFromString ─────────────────────────────────────────────────
+
+console.log('\nrenderToTypstFromString:');
+
+{
+    const result = renderToTypstFromString('1. (a)\n    (b)\n');
+    assert('keeps continued lines inside ordered list items',
+        result.includes('+ (a)\\\n  (b)'),
+        `got: ${JSON.stringify(result)}`);
+}
+
+{
+    const result = renderToTypstFromString('abc*hihi*def\n');
+    assert('renders emphasis with Typst function form inside words',
+        result.includes('abc#emph[hihi]def'),
+        `got: ${JSON.stringify(result)}`);
+}
+
+{
+    const result = renderToTypstFromString('| Name | Age |\n|---|---|\n| A | 1 |\n');
+    assert('preserves markdown table headers as Typst table.header',
+        result.includes('table.header(') && result.includes('[Name]') && result.includes('[Age]'),
+        `got: ${JSON.stringify(result)}`);
+}
+
+{
+    const result = renderToTypstFromString('| Left | Center | Right |\n| :--- | :----: | ---: |\n| a | b | c |\n');
+    assert('maps markdown table alignment to Typst table align tuple',
+        result.includes('align: (left, center, right)'),
+        `got: ${JSON.stringify(result)}`);
 }
 
 // ── Summary ─────────────────────────────────────────────────────────────────

@@ -12,6 +12,66 @@ const { replaceOutsideCodeBlocks } = require('./preprocess');
 const PAGEBREAK_MARKER = 'MDFPBMARKER';
 const TOC_MARKER       = 'MDFTOCMARKER';
 
+const HLJS_KIND_PRIORITY = new Map([
+    ['addition', 0],
+    ['deletion', 1],
+    ['bullet', 2],
+    ['emphasis', 3],
+    ['strong', 4],
+    ['comment', 5],
+    ['keyword', 6],
+    ['tag', 7],
+    ['operator', 8],
+    ['string', 9],
+    ['regexp', 10],
+    ['constant', 11],
+    ['type', 12],
+    ['title', 13],
+    ['property', 14],
+    ['variable', 15],
+]);
+
+const HLJS_CLASS_TO_KIND = new Map([
+    ['addition', 'addition'],
+    ['deletion', 'deletion'],
+    ['bullet', 'bullet'],
+    ['emphasis', 'emphasis'],
+    ['strong', 'strong'],
+    ['comment', 'comment'],
+    ['quote', 'comment'],
+    ['code', 'comment'],
+    ['formula', 'comment'],
+    ['keyword', 'keyword'],
+    ['selector-tag', 'keyword'],
+    ['built_in', 'tag'],
+    ['name', 'tag'],
+    ['tag', 'tag'],
+    ['operator', 'operator'],
+    ['punctuation', 'operator'],
+    ['string', 'string'],
+    ['doctag', 'string'],
+    ['selector-attr', 'string'],
+    ['selector-pseudo', 'string'],
+    ['template-tag', 'string'],
+    ['regexp', 'regexp'],
+    ['number', 'constant'],
+    ['literal', 'constant'],
+    ['template-variable', 'deletion'],
+    ['type', 'type'],
+    ['class', 'type'],
+    ['title', 'title'],
+    ['section', 'title'],
+    ['attr', 'property'],
+    ['attribute', 'property'],
+    ['property', 'property'],
+    ['symbol', 'bullet'],
+    ['meta', 'bullet'],
+    ['link', 'bullet'],
+    ['subst', 'variable'],
+    ['variable', 'variable'],
+    ['params', 'variable'],
+]);
+
 function escapeTypstString(value) {
     return String(value)
         .replace(/\\/g, '\\\\')
@@ -53,49 +113,24 @@ function textToTypst(text) {
 }
 
 function resolveHljsKind(classNames) {
-    const classes = new Set(
-        classNames
-            .split(/\s+/)
-            .map(s => s.trim())
-            .filter(Boolean)
-            .map(s => s.replace(/^hljs-/, ''))
-    );
+    let bestKind = null;
+    let bestRank = Number.POSITIVE_INFINITY;
 
-    if (classes.size === 0) return null;
-    if (classes.has('addition')) return 'addition';
-    if (classes.has('deletion')) return 'deletion';
-    if (classes.has('section')) return 'section';
-    if (classes.has('bullet')) return 'bullet';
-    if (classes.has('emphasis')) return 'emphasis';
-    if (classes.has('strong')) return 'strong';
-    if (classes.has('variable') && classes.has('language_')) return 'keyword';
-    if (
-        classes.has('doctag') ||
-        classes.has('keyword') ||
-        classes.has('template-tag') ||
-        classes.has('template-variable') ||
-        classes.has('type')
-    ) return 'keyword';
-    if (classes.has('title')) return 'title';
-    if (
-        classes.has('attr') ||
-        classes.has('attribute') ||
-        classes.has('literal') ||
-        classes.has('meta') ||
-        classes.has('number') ||
-        classes.has('operator') ||
-        classes.has('variable') ||
-        classes.has('selector-attr') ||
-        classes.has('selector-class') ||
-        classes.has('selector-id')
-    ) return 'constant';
-    if (classes.has('regexp') || classes.has('string')) return 'string';
-    if (classes.has('built_in') || classes.has('symbol')) return 'variable';
-    if (classes.has('comment') || classes.has('code') || classes.has('formula')) return 'comment';
-    if (classes.has('name') || classes.has('quote') || classes.has('selector-tag') || classes.has('selector-pseudo')) {
-        return 'tag';
+    for (const rawClass of String(classNames).split(/\s+/)) {
+        const cls = rawClass.trim().replace(/^hljs-/, '');
+        if (!cls) continue;
+
+        const kind = HLJS_CLASS_TO_KIND.get(cls);
+        if (!kind) continue;
+
+        const rank = HLJS_KIND_PRIORITY.get(kind);
+        if (rank !== undefined && rank < bestRank) {
+            bestKind = kind;
+            bestRank = rank;
+        }
     }
-    return null;
+
+    return bestKind;
 }
 
 function parseHljsHtml(html) {
@@ -145,6 +180,7 @@ function renderHljsNodesToTypst(nodes) {
         }
 
         const body = renderHljsNodesToTypst(node.children);
+        if (body.length === 0) continue;
         out += node.kind ? `#mdf-code-token("${node.kind}")[${body}]` : body;
     }
 
@@ -229,6 +265,10 @@ md.use(container, 'spoiler', {
 // Stack tracks list types (false = bullet, true = ordered)
 let _listStack = [];
 
+function listContinuationIndent() {
+    return _listStack.length > 0 ? '  '.repeat(_listStack.length) : '';
+}
+
 // ── Suppress HTML fallback (renderToken generates HTML tags by default) ───────
 md.renderer.renderToken = () => '';
 
@@ -250,11 +290,11 @@ r.heading_close = () => '\n\n';
 r.paragraph_open  = () => '';
 r.paragraph_close = () => (_listStack.length > 0 ? '\n' : '\n\n');
 
-// Emphasis
-r.strong_open  = () => '*';
-r.strong_close = () => '*';
-r.em_open      = () => '_';
-r.em_close     = () => '_';
+// Emphasis — function form avoids Typst markup boundary quirks like abc*hihi*def.
+r.strong_open  = () => '#strong[';
+r.strong_close = () => ']';
+r.em_open      = () => '#emph[';
+r.em_close     = () => ']';
 
 // Inline code
 r.code_inline = (tokens, idx) => '`' + tokens[idx].content + '`';
@@ -268,9 +308,11 @@ r.code_block = (tokens, idx) => renderCodeBlockToTypst(tokens[idx].content);
 // Horizontal rule
 r.hr = () => '#line(length: 100%)\n\n';
 
-// Breaks
-r.softbreak = () => '\n';
-r.hardbreak = () => '\\\n';
+// Breaks — inside lists, a markdown softbreak must become an explicit Typst
+// line break plus continuation indentation. Otherwise Typst treats the next
+// line as a fresh paragraph and loses the list item's hanging indent.
+r.softbreak = () => (_listStack.length > 0 ? '\\\n' + listContinuationIndent() : '\n');
+r.hardbreak = () => '\\\n' + listContinuationIndent();
 
 // Strip HTML (not valid in Typst)
 r.html_block  = () => '';
@@ -333,13 +375,42 @@ function countFirstRowCells(tokens, startIdx) {
     return count;
 }
 
-r.table_open  = (tokens, idx) => `#table(\n  columns: ${countFirstRowCells(tokens, idx + 1)},\n`;
+function explicitTypstAlignFromToken(token) {
+    const style = token.attrGet('style') || '';
+    const match = /text-align\s*:\s*(left|center|right)/i.exec(style);
+    return match ? match[1].toLowerCase() : null;
+}
+
+function firstRowAlignments(tokens, startIdx) {
+    const aligns = [];
+    for (let i = startIdx; i < tokens.length; i++) {
+        const type = tokens[i].type;
+        if (type === 'tr_close') break;
+        if (type === 'th_open' || type === 'td_open') {
+            aligns.push(explicitTypstAlignFromToken(tokens[i]));
+        }
+    }
+    return aligns;
+}
+
+r.table_open  = (tokens, idx) => {
+    const aligns = firstRowAlignments(tokens, idx + 1);
+    const hasExplicitAlign = aligns.some((align) => align !== null);
+    const alignArg = hasExplicitAlign
+        ? `  align: (${aligns.map((align) => align || 'left').join(', ')}),\n`
+        : '';
+    return `#table(\n  columns: ${countFirstRowCells(tokens, idx + 1)},\n${alignArg}`;
+};
 r.table_close = () => ')\n\n';
-r.thead_open  = r.thead_close = r.tbody_open = r.tbody_close = () => '';
+r.thead_open  = () => '  table.header(\n';
+r.thead_close = () => '  ),\n';
+r.tbody_open  = r.tbody_close = () => '';
 r.tr_open     = () => '';
 r.tr_close    = () => '';
-r.th_open     = r.td_open  = () => '  [';
-r.th_close    = r.td_close = () => '],\n';
+r.th_open     = () => '    [';
+r.th_close    = () => '],\n';
+r.td_open     = () => '  [';
+r.td_close    = () => '],\n';
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
